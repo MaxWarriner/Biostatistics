@@ -1,0 +1,345 @@
+---
+title: "Lab6"
+author: "Max Warriner"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.  
+
+MAKE SURE TO RUN THIS FIRST
+
+```{r}
+rm(list=ls())  # Remove the background variables,...
+```
+
+A. 
+
+```{r}
+con = c(46,48,36,42,52,43,39,32,41,39)
+trt = c(56,57,62,52,54,63,54,41,61,59)
+
+DATA_A = con  # "ds" is assigned to the sample A
+DATA_B = trt  # "us" is assigned to the sample B
+DATA_B2 = c(56,57,62,52,54,63,54,61,59)
+xbarA = mean(DATA_A) # Average of sample A
+xbarB = mean(DATA_B) # Average of sample B
+xbarB2 = mean(DATA_B2)
+nA = length(DATA_A)  # Size of sample A
+nB = length(DATA_B)  # Size of sample B
+nB2 = length(DATA_B2)
+sA = sd(DATA_A)      # Standard deviation of sample A
+sB = sd(DATA_B)      # Standard deviation of sample B
+sB2 = sd(DATA_B2)
+
+xlabel = "Trophoblasts per Blastocyt A"
+# Create a histogram for the DATA_A sample, and add a normal density curve
+hist(DATA_A, main="", freq=FALSE, xlab=xlabel, ylab="Relative Frequency") 
+curve(dnorm(x, mean=mean(DATA_A), sd=sd(DATA_A)), from=min(DATA_A)-1, to=max(DATA_A)+1, add=TRUE, col="red", lwd=2)
+
+xlabel = "Trophoblasts per Blastocyt w/ outlier for B"
+# Create a histogram for the DATA_A sample, and add a normal density curve
+hist(DATA_B2, main="", freq=FALSE, xlab=xlabel, ylab="Relative Frequency") 
+curve(dnorm(x, mean=mean(DATA_B), sd=sd(DATA_B)), from=min(DATA_B)-1, to=max(DATA_B)+1, add=TRUE, col="red", lwd=2)   
+
+xlabel = "Trophoblasts per Blastocyt w/o outlier for B"
+# Create a histogram for the DATA_A sample, and add a normal density curve
+hist(DATA_B2, main="", freq=FALSE, xlab=xlabel, ylab="Relative Frequency") 
+curve(dnorm(x, mean=mean(DATA_B2), sd=sd(DATA_B2)), from=min(DATA_B2)-1, to=max(DATA_B2)+1, add=TRUE, col="red", lwd=2)   
+
+# Create a QQ-plot for the DATA_A sample.
+qqnorm(DATA_A, main="", xlab="Theoretical Quantiles A", ylab="Sample Quantiles")      
+qqline(DATA_A, col="blue")
+
+# Create a QQ-plot for the DATA_A sample.
+qqnorm(DATA_B, main="", xlab="Theoretical Quantiles B", ylab="Sample Quantiles")      
+qqline(DATA_B, col="blue")
+
+# Create a QQ-plot for the DATA_A sample.
+qqnorm(DATA_B2, main="", xlab="Theoretical Quantiles B2", ylab="Sample Quantiles")      
+qqline(DATA_B2, col="blue")
+
+
+shapiro.test(DATA_A) # Perform Shapiro-Wilk test to assess the normality of DATA_A sample.
+shapiro.test(DATA_B) # Perform Shapiro-Wilk test to assess the normality of DATA_B sample.
+shapiro.test(DATA_B2) # Perform Shapiro-Wilk test to assess the normality of DATA_B2 sample.
+
+boxplot(DATA_A)                                   # A boxplot to visually inspect for outliers, which are represented by circles.
+outliers = boxplot.stats(DATA_A)$out              # Calculating the statistical outliers.
+outliers_locations = which(DATA_A %in% outliers)  # Identifying the locations of the outliers.
+DATA_A[outliers_locations]                        # Display the outliers in the data.
+
+boxplot(DATA_B)                                   # A boxplot to visually inspect for outliers, which are represented by circles.
+outliers = boxplot.stats(DATA_B)$out              # Calculating the statistical outliers.
+outliers_locations = which(DATA_B %in% outliers)  # Identifying the locations of the outliers.
+DATA_B[outliers_locations]                        # Display the outliers in the data.
+
+DATA_B2 = c(56,57,62,52,54,63,54,61,59)
+
+var.test(DATA_A, DATA_B)
+
+var.test(DATA_A, DATA_B2)
+
+```
+
+INTERPRETATION:
+
+By performing an analysis of the histogram of the data as well as a qqplot, the data seems to fit the normality assumption quite obviously. This can be confirmed by performing a shapiro-wilkes test on the data and obtaining a p-value > 0.99. Therefore we cannot reject the alternative hypothesis of unnormality of the data. 
+
+Based on a boxplot analysis of the data, we have an outlier in the trt group at a value of 41. We'll continue forward with the two-sample t-test with and without the outlier. To adjust for this, we also made two separate histograms, qqplots, and shapiro tests for the trt group with and without the outlier, and none of them changed the interpretations. 
+
+By performing the variance test on both data sets including and excluding the outlier, we obtain a p-value greater than 0.05 for both, so we satisfy the assumptions for student's two-sample t-test. 
+
+B.
+
+```{r}
+
+t.test(DATA_A, DATA_B, var.equal = TRUE, alternative = "two.sided")
+t.test(DATA_A, DATA_B2, var.equal = TRUE, alternative = "two.sided")
+
+```
+
+INTERPRETATION:
+
+Our null hypothesis is that the means of the two samples, treatment and control, are equal. Our alternative is that they do not have equal means. 
+
+We set our significance level (alpha) equal to 0.05.
+
+When performing the student's two-sample t-test on both data sets including and excluding the outlier, the interpretation would be similar for both so we will interpret the data set with the outlier. The test statistic acquired was t(18df) = 5.1429, and a statistically significant p-value (0.00006822 < 0.05). Because of this, we can reject our null hypothesis that the means of the control group and the treatment group are equal. The treatment does appear to have an effect on trophoblast cells in mice.
+
+C. 
+
+```{r}
+sP <- sqrt(((nA - 1) * sA^2 + (nB - 1) * sB^2) / (nA + nB - 2))
+# Based on var_p_value, do the appropriate test for power analysis
+cohens_d = (xbarA - xbarB) / sP    # Calculating Cohen's d, a measure of effect size
+library(pwr) # Load necessary library
+
+n = nA + nB                        # Calculating total sample size
+# If the total sample size is less than 20, we can correct Cohen's d using Hedges's g formula
+if (n < 20) {cohens_d = cohens_d * ((n - 3) / (n - 2.25)) * sqrt((n - 2) / n)}
+pwr.t2n.test(n1 = nA, n2 = nB, d = cohens_d, sig.level = 0.05, power = NULL, alternative = "two.sided")
+
+desired_power = 0.8 # Replace with your desired power
+# Define the sample size for the first group. You can play with this value to attain equal sample sizes.
+nsA = 4
+# Calculating required sample size n2 for given power and n1
+pwr.t2n.test(n1 = nsA, n2 = NULL, d = cohens_d, sig.level = 0.05, power = desired_power, alternative = "two.sided")
+
+```
+
+INTERPRETATION:
+
+The post-hoc power analysis of our data shows that we obtained a power > 0.8 with an effect size of 2.3. This indicates that our test is robust and efficient at detecting a significant difference between the two sample means. By performing another apriori power analysis, with our effect size being high as well, it was determined that we only needed 4 samples from each group to obtain the desired power of 0.8.
+
+D. 
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+plotdata = data.frame(group = c(rep("Control",10), rep("TRT",10)),
+                      x = c(DATA_A, DATA_B)) |>
+  group_by(group) |>
+  summarise(mean = mean(x),
+            SEM = sd(x) / sqrt(n))
+  
+
+ggplot(plotdata, aes(x = group, y = mean), color = "black") +  
+  geom_bar(aes(fill = group), stat = "identity", width = 0.5, color = "black") +  # Move fill inside geom_bar
+  geom_errorbar(aes(ymin = mean - 2 * SEM, ymax = mean + 2 * SEM), width = 0.1) +
+  labs(x = "Treatment Group", y = "Mean Trophoblasts per Blastocyt") +
+  theme(legend.position = "none") + 
+  theme(
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 20),
+    legend.text = element_text(size = 16)               
+  ) +
+  scale_fill_manual(values = c("Control" = "orange3", "TRT" = "purple4"))  +
+  theme_bw() +
+  geom_hline(yintercept = 0) +
+  ggtitle("Trophoblast Activity")
+
+```
+
+SUMMARY:
+
+We used a student's two sample t-test to determine whether mean trophoblast activity in mice was different between our control group and our treatment group. We encountered an outlier in the boxplot analysis of our data, but removing the outlier did not affect any of our assumptions or test interpretations. We checked our normality with a histogram, a qqplot, and a Shapiro-Wilkes test. Our test statistic gave us a statistically significant p-value t(5.1429) = 0.00006822 because the p-value was less than our specified alpha of 0.05. By conducting a power analysis we also showed we have significant power, and required fewer samples than collected to achieve our desired power. 
+
+Q2. 
+
+A. 
+
+```{r}
+Placebo=c(9, 10, 1, 16, 6, 3, 3,  1,  5,  5,  8,  4, 10,  1,  2,  2,  3, 0, 8, 19)
+NewDrug=c(1, 2, 4, 1, 1, 0, 2, 1, 0, 2, 1, 2, 0, 5, 1, 5, 7, 1, 7, 1)
+
+DATA_A = Placebo  # "ds" is assigned to the sample A
+DATA_B = NewDrug  # "us" is assigned to the sample B
+xbarA = mean(DATA_A) # Average of sample A
+xbarB = mean(DATA_B) # Average of sample B
+nA = length(DATA_A)  # Size of sample A
+nB = length(DATA_B)  # Size of sample B
+sA = sd(DATA_A)      # Standard deviation of sample A
+sB = sd(DATA_B)      # Standard deviation of sample B
+
+xlabel = "Shortness of Breath Episodes (Placebo)"
+# Create a histogram for the DATA_A sample, and add a normal density curve
+hist(DATA_A, main="", freq=FALSE, xlab=xlabel, ylab="Relative Frequency") 
+curve(dnorm(x, mean=mean(DATA_A), sd=sd(DATA_A)), from=min(DATA_A)-1, to=max(DATA_A)+1, add=TRUE, col="red", lwd=2)
+
+xlabel = "Shortness of Breath Episodes (Drug)"
+# Create a histogram for the DATA_A sample, and add a normal density curve
+hist(DATA_B, main="", freq=FALSE, xlab=xlabel, ylab="Relative Frequency") 
+curve(dnorm(x, mean=mean(DATA_B), sd=sd(DATA_B)), from=min(DATA_B)-1, to=max(DATA_B)+1, add=TRUE, col="red", lwd=2)
+
+# Create a QQ-plot for the DATA_A sample.
+qqnorm(DATA_A, main="", xlab="Theoretical Quantiles", ylab="Sample Quantiles")      
+qqline(DATA_A, col="blue")
+
+# Create a QQ-plot for the DATA_A sample.
+qqnorm(DATA_B, main="", xlab="Theoretical Quantiles", ylab="Sample Quantiles")      
+qqline(DATA_B, col="blue")
+
+boxplot(DATA_A)                                   # A boxplot to visually inspect for outliers, which are represented by circles.
+outliers = boxplot.stats(DATA_A)$out              # Calculating the statistical outliers.
+outliers_locations = which(DATA_A %in% outliers)  # Identifying the locations of the outliers.
+DATA_A[outliers_locations]                        # Display the outliers in the data.
+
+
+boxplot(DATA_B)                                   # A boxplot to visually inspect for outliers, which are represented by circles.
+outliers = boxplot.stats(DATA_B)$out              # Calculating the statistical outliers.
+outliers_locations = which(DATA_B %in% outliers)  # Identifying the locations of the outliers.
+DATA_B[outliers_locations]                        # Display the outliers in the data.
+
+shapiro.test(DATA_A) # Perform Shapiro-Wilk test to assess the normality of DATA_A sample.
+shapiro.test(DATA_B) # Perform Shapiro-Wilk test to assess the normality of DATA_A sample.
+
+ks.test(DATA_A, DATA_B)
+
+
+```
+
+INTERPRETATION:
+
+When conducting the normality tests for both of our data sets, they both fail all of the assumptions. The histograms and qqplots don't show approximate normality. The boxplots show multiple outliers. And, the shapiro-wilkes test for normality achieves a p-value lower than 0.05, rejecting the null hypothesis of normality for both data sets. Because of this, we will continue forward using a Mann-Whitney U test. 
+
+B. 
+
+```{r}
+
+wilcox.test(DATA_A, DATA_B, alternative = "two.sided")
+
+ranks = rank(c(DATA_A, DATA_B))
+
+# Printing the calculated mean ranks
+mean(ranks[1:length(DATA_A)])                   # Calculating the mean rank of the 'ds' group. 
+mean(ranks[(length(DATA_A) + 1):length(ranks)]) # Calculating the mean rank of the 'us' group.
+
+```
+
+INTERPRETATION:
+
+Because our data failed the assumption of similar distributions using the Kolmogorov-Smirnov test, we will be comparing mean ranks. Our null hypothesis is that the mean ranks of the drug and placebo will be equal. The alternative is that the mean ranks of the drug and placebo will not be equal.
+
+Our alpha level will be 0.05.
+
+We conducted a mann-whitney U test on the mean ranks of placebo against a new drug for treating asthma. Conducting the test gives us a test statistic of 301 and a corresponding p-value of 0.006 which is less than our specified alpha of 0.05. Because of this, we can reject our null hypothesis that the mean ranks of the data are equal.
+
+C. 
+
+```{r}
+
+library(fitdistrplus) # Load the required package
+
+x <- DATA_A  # Replace DATA_A with your dataset
+
+# Fit distributions and store in a list
+distributions <- c("norm", "weibull", "gamma", "logis", "exp", "pois", "geom", "nbinom")
+fit_list <- lapply(distributions, function(dist) {
+    tryCatch(fitdist(x, dist), error = function(e) NULL)
+})
+names(fit_list) <- distributions
+fit_list <- Filter(Negate(is.null), fit_list)
+
+# Extract fit statistics and parameters into a data frame
+fit_stats <- do.call(rbind, lapply(names(fit_list), function(dist) {
+    fit <- fit_list[[dist]]
+    params <- paste(names(coef(fit)), "=", round(coef(fit), 4), collapse = ", ")
+    data.frame(Distribution = dist, AIC = fit$aic, BIC = fit$bic, LogLikelihood = fit$loglik, Parameters = params)
+}))
+
+print(fit_stats) # Display fit statistics
+
+distributions <- c("norm", "weibull", "gamma", "logis", "exp", "pois", "geom", "nbinom")
+fit_list <- lapply(distributions, function(dist) {
+    tryCatch(fitdist(x2, dist), error = function(e) NULL)
+})
+names(fit_list) <- distributions
+fit_list <- Filter(Negate(is.null), fit_list)
+
+# Extract fit statistics and parameters into a data frame
+fit_stats <- do.call(rbind, lapply(names(fit_list), function(dist) {
+    fit <- fit_list[[dist]]
+    params <- paste(names(coef(fit)), "=", round(coef(fit), 4), collapse = ", ")
+    data.frame(Distribution = dist, AIC = fit$aic, BIC = fit$bic, LogLikelihood = fit$loglik, Parameters = params)
+}))
+
+print(fit_stats) # Display fit statistics
+
+source("pwr.wilcox.test.R")
+nA=20
+nB=20
+distA = "exp"
+distB = "exp"
+paramsA = list(rate = 0.1724)
+paramsB = list(rate = 0.4545)
+pwr.wilcox.test(nA, nB, dist1 = distA, dist2 = distB, params1 = paramsA, params2 = paramsB)
+
+pwr.wilcox.test(NULL, NULL, dist1 = distA, dist2 = distB, params1 = paramsA, params2 = paramsB, desired_power = 0.8)
+
+```
+
+INTERPRETATION:
+
+By fitting our data against known distributions, we obtain that both data sets best fit to an exponential distribution. By conducting a power analysis of the current data sets, we obtain a power of 0.721, which is slightly less than our desired power of 0.8. Therefore, we do not have sufficient ability to detect a difference in the mean ranks of the two data sets. In order to obtain the sufficient power of 0.8, we should have taken 24 samples from each, via the same power test.
+
+
+D. 
+
+```{r}
+
+plotdata = data.frame(group = c(rep("Placebo",20), rep("New Drug",20)),
+                      x = c(DATA_A, DATA_B))
+
+ggplot(plotdata, aes(x = group, y = x, fill = group)) +
+  geom_boxplot(width = 0.5) +
+  stat_boxplot(geom = "errorbar", width = 0.15) +
+  scale_fill_manual(values = c("Placebo" = "blue3", "New Drug" = "green4")) +
+  labs(x = "Treatment", y = "Shortness of Breath Episodes") +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16),   
+    legend.text = element_text(size = 16)  
+  )+
+  theme(legend.position = "none") +
+  ggtitle("Drug Effect on Asthma") +
+  geom_hline(yintercept = 0)
+
+```
+
+SUMMARY:
+
+We conducted a Mann-Whitney U test on the effectiveness of a new drug on asthma. We used this test because the assumptions of normality of both data sets failed. We also compared the mean ranks of the data instead of the medians because the distributions of the data sets did not match. Our null hypothesis was that the mean ranks of the placebo would be equal to the mean ranks of the new drug. Our alternative was that the mean ranks of the two would not be equal. After conducting the test, we obtained a statistically significant test statistic and p-value: W(301) = 0.005863. This was less than our specified alpha of 0.05 so we can reject our null hypothesis that the mean ranks of the new drug and placebo are equal. After conducting a power analysis, we concluded that both data sets followed a exponential distribution best and that the power was slightly insufficient (0.721 < 0.8). In order to better be able to detect a significant difference in the mean ranks, we should have obtained more samples. 
+
+
+
+Q3.
+
+A. *done on paper*
+
+B. *done on paper*
+
+C. *done on paper*

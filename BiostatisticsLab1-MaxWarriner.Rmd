@@ -1,0 +1,235 @@
+---
+title: "Biostatistics-Lab1"
+author: "Max Warriner (Amanda Harragan, Grace Ciaravino)"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r}
+rm(list = ls())  # Removes all objects from the environment.
+```
+
+Q1.
+
+a. We believe the sampling strategy used was "snowball" sampling because the researchers asked the study individuals to recruit other individuals they knew with the same condition. 
+
+b. We could obtain a database of every student at Colgate, then use a random number generator to select random students. The bias that goes with this true random sample is it's ability to leave out minority populations. We assume that every student (the population of the study) is available via this database. 
+
+c. 
+
+i. Independent: Gender of the individual, Dependent: Feeling of eyestrain
+
+ii. Independent(gender): Nominal, Dependent(eye strain): Ordinal
+
+
+d. The rank of 3.7 would 3.5 because it's between ranks 3 and 4. 
+
+Q2.
+
+a.  
+
+```{r}
+
+(429 + 7) / 28
+
+```
+
+b.  
+
+```{r}
+
+cos(0.782)
+
+```
+
+c.  
+
+```{r}
+
+log(2.5) + 30
+
+```
+
+d.  
+
+```{r}
+
+(27.5) / (16 / 3.6)
+
+```
+
+e.  
+
+```{r}
+
+log(3, base = 10)
+
+```
+
+f.  
+
+```{r}
+
+(9^2 - 1) / 10 
+
+```
+
+g.  
+
+```{r}
+
+exp(3)
+
+```
+
+Q3.
+
+```{r}
+
+diam_area <- function(d){
+  
+  r <- d/2
+  area <- r^2 * pi
+  return(area)
+  
+}
+
+diam_area(12)
+
+circles <- c(1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9, 10.1)
+
+diam_area(circles)
+
+```
+
+Q4.
+
+```{r}
+library(datasets)
+
+DNase <- DNase
+
+plot(DNase$conc, DNase$density, 
+     main = "Protein Concentration vs. Optical Density", 
+     xlab = "Protein Concentration", 
+     ylab = "Optical Density")
+
+```
+
+Figure 1: This plot shows the protein concentration of rat serum against optical density
+
+Q5.
+
+a.  
+
+```{r}
+
+soils <- data.frame(SiteName = c("DGC1", "DGC2", "Ship1", "Ship2", "Alice Holt", "Drayton", "Snowdon"), 
+                    LandUse = as.factor(c("P", "M", "M", "P", "W", "P", "P")), 
+                    SoilpH = c(5.49, 5.3, 6.33, 5.38, 4.93, 6.54, 6.04), 
+                    P = c(1150, 286, 2010, 992, 365, 2010, 531), 
+                    S = c(756, 1600, 1810, 575, 404, 1190, 687), 
+                    Ca = c(1690, 3390, 10500, 3440, 1650, 35000, 1020), 
+                    Se = c(1.98, 2.56, 2.39, 0.457, 0.491, 0.501, 1.4))
+
+```
+
+b.  Already converted to in part a. 
+
+```{r}
+
+```
+
+c.  
+
+```{r}
+library(tidyverse)
+soils <- soils |>
+  arrange(SoilpH)
+
+print(soils)
+
+```
+
+d.  
+
+```{r}
+
+mSe <- soils |>
+  group_by(LandUse) |>
+  summarise(mean.selenium = mean(Se))
+  
+print(mSe)
+
+```
+
+e.  
+
+```{r}
+
+pasture <- soils |>
+  filter(LandUse == "P")
+
+print(pasture)
+
+```
+
+f.  
+
+```{r}
+
+newsoils <- soils |>
+  mutate(P = sqrt(P))
+
+print(newsoils)
+
+```
+
+Q6.
+
+a.  
+
+Sepal.length, Sepal.width, Petal.length, and Petal.width are all continuous variables. Species is a factor and a nominal variable with three different levels: "setosa", "versicolor", and "virginica".
+
+```{r}
+iris <- iris
+
+head(iris)
+```
+
+b.  
+
+```{r}
+
+iris <- iris |>
+  arrange(Sepal.Length)
+
+```
+
+c.  
+
+```{r}
+
+iris.sum <- iris |>
+  group_by(Species) |>
+  summarise(mean.sepal.length = mean(Sepal.Length), 
+            mean.sepal.width = mean(Sepal.Width), 
+            mean.petal.length = mean(Petal.Length), 
+            mean.petal.width = mean(Petal.Width))
+
+```
+
+d.  
+
+```{r}
+
+setosa <- iris |>
+  filter(Species == "setosa")
+  
+
+```
+
+Additional Exercise.
+
+Q7.

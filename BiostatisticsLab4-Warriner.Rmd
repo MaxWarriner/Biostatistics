@@ -1,0 +1,155 @@
+---
+title: "BiostatisticsLab4.Rmd"
+output: pdf_document
+---
+
+Q1. 
+
+A. 
+
+```{r}
+
+pbinom(q = 6, size = 20, prob = 0.2) - pbinom(q = 2, size = 20, prob = 0.2)
+
+```
+
+B.
+
+```{r}
+
+1 - pbinom(q = 1, size = 20, prob = 0.2)
+
+```
+
+Extra Practice Question
+
+```{r}
+
+pbinom(q = 3, size = 20, prob = 0.2)
+
+```
+
+Q2.
+
+```{r}
+
+
+(1 - ppois(q = 1, lambda = 0.929)) * 550
+
+```
+
+
+Q3.
+
+```{r}
+
+dpois(x = 0, lambda = 2.2)
+
+dpois(x = 0, lambda = 2.2)^6
+
+```
+
+Q4. 
+
+A.
+
+```{r}
+
+library(ggplot2)
+
+
+data <- data.frame(
+  'Number_of_infected_plants' = c(0:5), 
+  'Probability' = dbinom(c(0:5), size = 5, p = 0.40)
+)
+
+ggplot(data, aes(x = factor(Number_of_infected_plants), y = Probability, fill = Probability)) +
+  geom_bar(stat = 'identity') +  
+  scale_y_continuous(limits = c(0, 0.4)) +
+  labs(
+    x = "Number of Infected Plants",       
+    y = "Probability",              
+    title = "Binomial Probabilities of Discrete Infected Plant Values"  
+  ) +
+  theme(
+    axis.text = element_text(size = 15),  
+    axis.title = element_text(size = 18, face = "bold"), 
+    plot.title = element_text(size = 20, face = "bold")) +
+  geom_hline(yintercept = 0) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+  
+
+
+
+```
+
+B.
+
+```{r}
+
+1 - pbinom(q = 2, size = 5, prob = 0.4)
+
+```
+
+Q5.
+
+A.
+
+```{r}
+
+pnorm(q = 480, mean = 528, sd = 55)
+
+```
+
+B.
+
+```{r}
+
+pnorm(q = 480, mean = 528, sd = 55) * 2
+
+```
+
+Q6. 
+
+A.
+
+```{r}
+
+pnorm(q = 4, mean = 5.759, sd = 0.848)
+
+```
+
+B.
+
+```{r}
+
+pnorm(q = 6, mean = 5.759, sd = 0.848) - pnorm(q = 5, mean = 5.759, sd = 0.848)
+
+```
+
+C.
+
+```{r}
+
+qnorm(p = 1 - 0.025, mean = 5.759, sd = 0.848)
+
+```
+
+Extra Practice Question
+
+```{r}
+
+1 - pnorm(q = 6, mean = 5.759, sd = 0.848)
+
+```
+
+Q7.Extra Practice Question.
+
+```{r}
+
+1 - pbinom(q = 9, size = 25, prob = 0.20)
+
+```
+

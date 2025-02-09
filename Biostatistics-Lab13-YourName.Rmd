@@ -1,0 +1,334 @@
+---
+title: "Lab13"
+author: "Max Warriner"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.
+
+A.
+
+```{r}
+
+sub.con <- c(0.2, 0.3, 0.4, 0.5, 1)
+react <- c(105.3, 142.9, 166.7, 181.8, 256.4)
+
+trans.sub <- 1/sub.con
+trans.react <- 1/react
+
+transformed <- data.frame(trans.sub, trans.react)
+
+# Perform linear regression using the transformed variables
+line = lm(trans.react ~ trans.sub, data = transformed)
+
+# Plot the transformed data
+plot(trans.sub, trans.react, 
+     pch = 1,                  # Point character
+     cex.lab = 1.5,            # Size of axis labels
+     cex.axis = 1.5,           # Size of axis tick marks
+     cex = 1.5)                # Size of plot points
+
+
+```
+By transforming the data (taking the reciprocals of both), the scatterplot with a fitted linear curve shows a clear linear relationship.
+
+
+B. 
+
+```{r}
+
+# Fit a linear regression model using the transformed reaction rate as the response variable
+# and the transformed substrate concentration as the predictor variable
+line = lm(trans.react ~ trans.sub, data = transformed)
+# Display a summary of the linear regression model, including coefficients, R-squared value, and other statistics
+summary(line)
+# Calculate and display the 95% confidence interval for the slope coefficient associated with 'TransSubsConc'
+confint(line, 'trans.sub', level = 0.95)
+
+
+```
+Transformed substrate concentration is a significant predictor of transformed reaction rate with a t-statistic of 28.93 and a p-value < 0.001. Our adjusted R-squared value is 0.9952, indicating an excellent fit. Our slope of the transformed substrate concentration has a 95% confidence interval of [0.0012, 0.0015]. In our model, 1/reaction rate = 0.001372 * 1/substrate concentration + 0.002584.
+
+
+C. 
+
+```{r}
+
+# Perform linear regression using the transformed variables
+line = lm(trans.react ~ trans.sub, data = transformed)
+
+# Plot the transformed data
+plot(trans.sub, trans.react, 
+     pch = 1,                  # Point character
+     cex.lab = 1.5,            # Size of axis labels
+     cex.axis = 1.5,           # Size of axis tick marks
+     cex = 1.5)                # Size of plot points
+# Add the regression line to the plot
+abline(line, col = 'red', lwd = 2, lty = 1)
+
+```
+
+D.
+
+```{r}
+
+c = line$coefficients[1]      # Intercept of the regression line
+d = line$coefficients[2]      # Slope of the regression line
+# c=1/a and d=b/a --> a = 1/c and b=a*d (Lecture 23)
+a=1/c
+b=a*d
+plot(sub.con, react, xlab='[Substrate (uM)]',ylab='Reaction Rate (uM/sec)', cex.axis=1.5,cex.lab=1.5, cex=2.0)
+curve(a*x/(b+x), from=min(sub.con), to=max(sub.con), col="red", lwd=2, add=TRUE)
+legend('bottomright', legend='RR=a*[S]/(b+[S])', lwd=3, col=c("red"), lty=1, cex=1.5)
+
+```
+
+E. 
+
+```{r}
+
+# Transform a new substrate concentration value for prediction
+newdata = data.frame(trans.sub = 1/0.35)
+
+# Predict the transformed reaction rate for the new transformed substrate concentration
+# and calculate the confidence interval for this prediction
+predicted_confidence_interval = predict(line, newdata, interval = "confidence")
+
+# Extract the fitted value from the prediction and back-transform it
+# Applying the back-transformation y = 1/ytilde
+LinearFit = predicted_confidence_interval[,"fit"]
+Fit = 1 / LinearFit
+
+# Extract and back-transform the lower bound of the confidence interval
+LinearLB = predicted_confidence_interval[,"lwr"]
+UB = 1 / LinearLB
+
+# Extract and back-transform the upper bound of the confidence interval
+LinearUB = predicted_confidence_interval[,"upr"]
+LB = 1 / LinearUB
+
+# Output the back-transformed fitted value and confidence interval bounds
+cat("Fitted Value:", Fit, "\n")
+cat("Lower Bound of Confidence Interval:", LB, "\n")
+cat("Upper Bound of Confidence Interval:", UB, "\n")
+
+
+```
+For a concentration of 0.35 mmol, the model would predict a reaction rate of 153.7769 mmol/s and a 95% confidence interval of [149.1014, 158.7552].
+
+
+Q2.
+
+A.
+
+```{r}
+
+nitrogen <- c(0, 20, 40, 60, 80, 120, 160, 180)
+yield <- c(20, 41.5, 52.1, 61.4, 73.5, 86, 92.8, 94)
+df <- data.frame(nitrogen,yield)
+
+library("nlstools") 
+model1.form = as.formula(yield ~ a + b*nitrogen + c*nitrogen^2)
+model2.form = as.formula(yield ~ m*(1-C*exp(k*nitrogen)))
+
+# WE ARE USING THESE STARTING VALUES: VO2rest = 400, VO2peak = 1600, mu = 1
+model1 = nls(model1.form, start = list(a = 15.4, b = 13.8, c = -0.12), data = df, trace = FALSE, nls.control(maxiter = 10000))
+
+# WE ARE USING THESE STARTING VALUES: VO2rest = 400, VO2peak = 1600, mu = 1
+model2 = nls(model2.form, start = list(m = 100, C = 1.2, k = -0.05), data = df, trace = FALSE, nls.control(maxiter = 10000))
+
+model.res1 = nlsResiduals(model1)
+plot(model.res1)
+test.nlsResiduals(model.res1)
+
+model.res2 = nlsResiduals(model2)
+plot(model.res2)
+test.nlsResiduals(model.res2)
+
+model.jack1 = nlsJack(model1)
+summary(model.jack1)
+plot(model.jack1)
+
+model.jack2 = nlsJack(model2)
+summary(model.jack2)
+plot(model.jack2)
+
+
+```
+
+Both models pass the assumption of normality and homoscedasticity. Both have normal appearing residuals. Model 1 has a Shapiro test statistic W of 0.93 and a p-value of 0.52. Model 1 has a Runs test statistic of 0.76 and a p-value of 0.44. Model 2 has a Shapiro test statistic W of 0.97 and a p-value of 0.86. Model 2 has a test statistic of 0 and a p-value of 1. 
+
+Model 1 has two observations, 1 & 2 that show a jackknife value greater than 4, significantly influencing the parameters. Model 2 no observations with a jackkife value greater than 4. 
+
+
+B. 
+
+```{r}
+
+overview(model1)
+
+overview(model2)
+
+AIC(model1, model2)
+BIC(model1, model2)
+
+
+```
+
+With the fitting of model 1, we predict that yield = 22.484 + 0.820 * nitrogen -0.002 * nitrogen. With model 2, we predict that yield = 104.402(1 - 0.800 * e^(-0.012 * nitrogen)). With the AIC/BIC approach, model 2 has a slightly better fit with both the AIC and BIC being less than model 1. 
+
+
+C. 
+
+```{r}
+
+plotfit(model1, variable = 1, smooth = TRUE) # By specifying an independent variable. 1 in this case.
+
+plotfit(model2, variable = 1, smooth = TRUE) # By specifying an independent variable. 1 in this case.
+
+
+```
+
+Both curves appear to fit the data well. It's hard to tell which one exactly is better in the visual inspection. Model two does seem to have a slightly better curvature fit than model 1. 
+
+D.
+
+```{r}
+
+new.yield <- data.frame(nitrogen = 15)
+
+predict(model1, new.yield, interval = "confidence")
+
+predict(model2, new.yield, interval = "confidence")
+
+```
+Model 1 predicts that with a nitrogen level of 15 lbs/acre there would be a yield of 34.25028 bushels. Model 2 predicts 35.75845 bushels. Very similar in both cases. 
+
+Q3.
+
+A.
+
+```{r, message=FALSE}
+
+library(simr)
+
+birds <- read.csv("bird_foraging.csv")
+
+# Fit the Linear Mixed Effects Model
+bird.model = lmer(foraging_time ~ temperature + food_availability + (1 | bird_id) + (1 | site_id), data = birds)
+# Model Summary
+summary(bird.model)
+
+bird.null = lmer(foraging_time ~ (1 | bird_id) + (1 | site_id), data = birds)
+anova(bird.null, bird.model)
+
+
+```
+
+After fitting the model, we estimate that the coefficients for temperature-hot, temperature-moderate, and food availability-low are 0.5869, 0.2790, and -1.0212 respectively. We interpret this as: going from low to hot temperatures increases the foraging time by 0.5869 hours, going from low to moderate temperatures increases the foraging time by 0.2790 hours, and going from high food availability to low food availability decreases foraging time by 1.0212 hours. 
+
+
+B. 
+
+```{r, warning=FALSE, message=FALSE, error=FALSE}
+
+library(lme4)
+library(lmerTest)
+library(ggplot2)
+library(performance)  # For diagnostic checks
+library(influence.ME) # For influence diagnostics in LMMs
+
+# Residuals vs Fitted Plot
+ggplot(data = NULL, aes(x = fitted(bird.model), y = resid(bird.model))) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals") +
+  theme_minimal()
+
+performance::check_collinearity(bird.model)
+
+# Residual Normality
+qqnorm(resid(bird.model))
+qqline(resid(bird.model), col = "blue")
+
+# Check Normality (Residuals + Random Effects)
+performance::check_normality(bird.model)
+
+# Random Effects Normality
+ranef_effects = ranef(bird.model)
+
+# Random Intercepts for 'bird_id'
+qqnorm(ranef_effects$bird_id[, "(Intercept)"])
+qqline(ranef_effects$bird_id[, "(Intercept)"], col = "blue")
+
+# Random Intercepts for 'site_id'
+qqnorm(ranef_effects$site_id[, "(Intercept)"])
+qqline(ranef_effects$site_id[, "(Intercept)"], col = "blue")
+
+
+# Homoscedasticity Check
+performance::check_heteroscedasticity(bird.model)
+
+# Residual Autocorrelation Plot
+acf(resid(bird.model), main = "Autocorrelation of Residuals")
+library(randtests)
+runs.test(residuals(bird.model))
+
+# Influence Diagnostics
+influence_results = influence(bird.model, group = "bird_id")
+plot(influence_results, which = "cook")
+
+
+```
+
+The data passes the assumption of linearity with randomly appearing residuals for the fitted model. The data also passes the assumption of colinearity with both fixed effects having a VIF of 1.27 < 10. The data passes all of the assumptions for normality. The residuals and the random effects appear roughly normal on a qqplot inspection. The data passes the assumption of homoscedasticity with a p-value of 0.873. The data passes the assumption of independence of residuals with a Runs test statistic of 1.4864 and a p-value of 0.1372. None of the bird ids are significantly influencing the data as none of them have cook's distances > 1. Because the data and the model pass all of these assumptions, we have justified the use of a linear mixed model analysis. 
+
+C. 
+
+```{r, warning=FALSE, error=FALSE, }
+
+library(simr)
+# Linear Mixed Effects Model
+bird_model = lmer(foraging_time ~ temperature + food_availability + (1 | bird_id) + (1 | site_id), data = birds)
+
+
+# The number of subjects
+extended_model = extend(bird_model, along = "bird_id", n = 20) 
+
+# Power analysis for attitude
+powerSim(extended_model, fixed("food_availability"), nsim = 100, progress = FALSE)
+# Power analysis for gender
+powerSim(extended_model, fixed("temperature"), nsim = 100, progress = FALSE)
+
+
+```
+Our fixed effect of temperature has a power of 33% and our other fixed effect of food_availablity has a power of 96%. In order to have a sufficient power of 0.8 for both fixed effects, we'd need 20 samples. 
+
+
+D. SUMMARY:
+We performed a linear mixed model analysis to see if food availability and temperature affect the foraging times of birds. We also added the random factors of the birds' ids and the sites' ids to account for individual variation in the birds and sites.
+
+The data passes the assumption of linearity with randomly appearing residuals for the fitted model. The data also passes the assumption of colinearity with both fixed effects having a VIF of 1.27 < 10. The data passes all of the assumptions for normality. The residuals and the random effects appear roughly normal on a qqplot inspection. The data passes the assumption of homoscedasticity with a p-value of 0.873. The data passes the assumption of independence of residuals with a Runs test statistic of 1.4864 and a p-value of 0.1372. None of the bird ids are significantly influencing the data as none of them have cook's distances > 1.
+
+After fitting the model, we estimate that the coefficients for temperature-hot, temperature-moderate, and food availability-low are 0.5869, 0.2790, and -1.0212 respectively. We interpret this as: going from low to hot temperatures increases the foraging time by 0.5869 hours, going from low to moderate temperatures increases the foraging time by 0.2790 hours, and going from high food availability to low food availability decreases foraging time by 1.0212 hours. By comparing the model to a null model without the effect of temperature and food availability, we obtained a statistically better fitting model by an ANOVA analysis, with a chi-squared statistic (3 df) of 15.002 and a p-value of 0.001815. 
+
+Our fixed effect of temperature has a power of 33% and our other fixed effect of food_availablity has a power of 96%. In order to have a sufficient power of 0.8 for both fixed effects, we'd need 20 samples. 
+
+
+Q4.
+
+A. I'd start this problem by analyzing it in the sense of a multivariable logistic regression problem. Then, I'd check the assumptions of logistic regression so I can justify its usage, such as the status of the variables, the independence of the observations, the mutual exclusivity of the variables, having at least 15 samples per independent variable, no multicolinearity, and that there are no outliers. Assuming those are met, I'd fit the model using a logistic regression package. After that I would run a stepwise variable selection process to determine the best and simplest model using the variables in the problem. After that I would find the fitness of my model with the Pseudo-R Squared. Then I'd look at the odds ratios of the selected variables and interpret those. I'd make barplots or boxplots to visually compare different groups within each independent variable. After that I'd calculate the power of my regression model. 
+
+B. I want to test whether the amount of time cats spend cleaning themselves depends on temperature and the amount of brushing they receive. I want to account for individual random variation in the cats weights and also the variation among the breed of cat. 
+
+Q5.
+
+A. A linear mixed effects model would be appropriate here as you have three independent variables that are affecting a continuous dependent variable. You can't use a multivariable linear regression because you are treating the sanctuary and species as a random factor and diet as a fixed factor. 
+
+B. This could be tested using a Kruskal-Wallis test. This is basically a One-Way ANOVA test because you're testing one categorical independent variable against a continuous dependent variable but the data is non-parametric so we use Kruskal-Wallis instead. 
+
+C. To model the price of the houses, you could use a multivariable linear regression to model the price of the houses based on the square footage, number of bedrooms and the location. As the question suggests, the higher variability for larger houses might make the residuals not independent, so in that case you could use a Siegel regression for a non-parametric approach. 
+
+D. To do this, they can use the Durbin-Watson test that tests for autocorrelation in linear regression models. 

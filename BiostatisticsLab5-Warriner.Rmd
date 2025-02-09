@@ -1,0 +1,245 @@
+---
+title: "Lab5"
+author: "Max Warriner"
+output: pdf_document
+---
+
+Q1.  
+
+MAKE SURE TO RUN THIS FIRST
+
+```{r}
+rm(list=ls())  # Remove the background variables,...
+```
+
+A. 
+
+```{r}
+
+n = 44
+
+xbar = 15.59
+
+sd = 2.55
+
+sem = sd / sqrt(n)
+
+alpha = 0.05
+
+dof = n - 1
+
+margin_of_error = abs(qt(alpha/2, dof)) * sem
+
+ci_lower_bound = xbar - margin_of_error
+ci_upper_bound = xbar + margin_of_error
+
+cat("Confidence Interval: [",ci_lower_bound,",",ci_upper_bound,"]\n")
+
+```
+The confidence interval calculated tells us that we have a 95% chance of capturing the true mean of the great white sharks as 15.59 +/ 0.78 feet. 
+
+
+B.
+
+```{r}
+
+library(pwr)
+
+mu0 = 20
+
+t = (xbar - mu0) / sem
+t
+
+#Degrees of freedom is still 43
+
+p_value = 2 * pt(-abs(t), dof)
+p_value
+
+cohen_d = (xbar - mu0) / sd
+
+power_analysis = pwr.t.test(n = n, d = cohen_d, sig.level = 0.05, type = "one.sample", alternative = "two.sided")
+print(power_analysis)
+
+
+
+
+```
+
+Assumptions: It is given that the data is normally distributed and has no outliers. The measurements of each shark should be independent of one another. Also, the unit of length is a continuous variable. 
+
+Test: We'll perform a two-sided, one-sample t-test to test the claim that the average length of a great white shark equals 20 feet. Put simply, H0: mu = 25, Ha: mu != 25.
+
+Significance Level: We've set our alpha/significance level as 0.05.
+
+Test: We calculate a test statistic of t(43) = 11.47, and a p-value of 1.139461e-14. Since our p-value is less than our specified alpha (p < 0.05), we have sufficient evidence to reject our null hypothesis that the average length of great white sharks equals 20 feet, in favor of our alternative hypothesis, so we can claim that the average length of great white sharks is significantly less than 20 feet. 
+
+Power Analysis: From our power analysis using Cohen's d calculated from the statistics given, we obtain a power of approximately 1. This is greater than 0.8, so we can conclude we have sufficient power. 
+
+
+Q2. 
+
+```{r}
+yield=c(20.352, 25.355, 20.689, 22.595, 19.478, 23.281, 19.160, 19.807, 20.549, 16.226, 16.199, 19.998)
+
+write.csv(yield, file = "yield.csv")
+
+```
+
+A. 
+
+```{r}
+
+DATA = yield
+hist(DATA,                   
+     freq = F,
+     xlab = "Crop Yield (Tonnes per Acre)", 
+     main = "")
+curve(dnorm(x, mean(DATA), sd(DATA)),
+      min(DATA)-1,      
+      max(DATA)+1,                 
+      col = "red",                 
+      lwd = 2,                     
+      add = TRUE)                 
+
+qqnorm(DATA,                            
+       main = "",                     
+       xlab = "Theoretical Quantiles",
+       ylab = "Sample Quantiles")    
+
+qqline(DATA)
+
+shapiro.test(DATA)
+
+boxplot(DATA)
+
+```
+Assumptions: 
+
+The histogram plotted with a normal curve shows approximate normality. This is confirmed by the qqplot and the Shapiro test p-value of 0.508. Our data does fail the assumption that there are no outliers however, as there is one positive outlier shown in the boxplot. 
+
+B. 
+
+```{r}
+mu0 = 20
+alpha = 0.05
+dof = length(DATA) - 1
+sd = sd(DATA)
+sem = sd / sqrt(length(DATA))
+xbar = mean(DATA)
+
+t.test(DATA, mu = mu0, alternative = "greater")
+
+
+margin_of_error = abs(qt(alpha/2, dof)) * sem
+
+ci_lower_bound = xbar - margin_of_error
+ci_upper_bound = xbar + margin_of_error
+
+cat("Confidence Interval: [",ci_lower_bound,",",ci_upper_bound,"]\n") # Print the confidence interval
+
+
+```
+By doing a one-sided, one-sample t-test of our results, we obtain a test statistic t(11) = 0.40609, and a p-value of 0.3462. Just based off these results, we fail to reject our null hypothesis that the yield of the new fertilizer is 20 tonnes per acre because our p-value is greater than our specified alpha (0.3452 > 0.05).
+
+C. 
+
+```{r}
+
+cohen_d = (xbar - mu0) / sd
+
+pwr.t.test(n = length(DATA), d = cohen_d, sig.level = 0.05, type = "one.sample", alternative = "greater")
+
+
+pwr.t.test(power = 0.8, d = cohen_d, sig.level = 0.05, type = "one.sample", alternative = "greater")
+
+```
+When analyzing the power of our test with the current sample size, we obtain a power of 0.103 which is much less than our desired power of 0.8. In order to achieve a power of 0.8, the power test tells us that we should have collected 452 samples. 
+
+
+D. SUMMARY:
+
+The measurements of the crop yields should be independent of each other. The crop yields are also a continuous variable of tonnes/acre. To test for normality we employed three methods. We plotted a histogram of the data overlayed with a normal curve generated from the statistics of the data, and it shows an approximately normal shaped curve. We also plotted a qqplot that shows approximate normality due to the hugging of the data to the qqplot curve. Finally, we performed a Shapiro-Wilk normality test and obtained a p-value of 0.508, which is greater than an alpha of 0.05, meaning we cannot reject the null hypothesis of the test which assumes normality of the data. We do have an outlier in our data, which we show during the boxplot analysis of our data. Because the data meets all of the other assumptions, we will continue on with the outlier included in our one-sided one-sample t-test. 
+
+Our null hypothesis is that the yield of the new fertilizer will be less than or equal to 20 tonnes per acre. Our alternative hypothesis is that the yield of the new fertilizer will be greater than 20 tonnes per acre. 
+
+By performing the one-sided one-sample t-test, we obtain a test statistic t(11) = 0.40609. This gives us a 95% confidence interval of [18.64, 21.97] and a p-value of 0.3462. The confidence interval tells us that we are 95% sure that the true mean of the yield of the new fertilizer is between 18.64 and 21.97 tonnes per acre. Because the p-value is greater than our alpha (p > 0.05), we fail to reject the null hypothesis that the yield of the new fertilizer is greater than 20 tonnes per acre. 
+
+The power test of our data shows us that we have insufficient power in concluding a rejected null hypothesis if the alternative hypothesis was true because our power value (0.103) was less than 0.8. A second power test shows us that in order to obtain a sufficient power (like 0.8), we would have to obtain 452 samples. 
+
+To mention the outlier, because the outlier we tested was a positive outlier and we failed to reject the alternative hypothesis of a yield higher than 20 tonnes per acre, we can be safe to assume that removing the outlier would not change our conclusion. 
+
+Q3. 
+
+```{r}
+standing = c(132, 146, 135, 141, 139, 162, 128, 137, 145, 151, 131, 143)
+laying = c(136, 145, 140, 147, 142, 160, 137, 136, 149, 158, 130, 150)
+difference = laying - standing
+
+DATA = data.frame(participant = c(seq(1:length(standing))), 
+                  standing = standing,
+                  laying = laying,
+                  difference = difference)
+
+write.csv(DATA, "bpdiff.csv")
+
+boxplot(DATA$difference)
+
+hist(DATA$difference,                   
+     freq = F,
+     xlab = "Difference in Laying and Standing Blood Pressure", 
+     main = "")
+curve(dnorm(x, mean(DATA$difference), sd(DATA$difference)),
+      min(DATA$difference)-1,      
+      max(DATA$difference)+1,                 
+      col = "red",                 
+      lwd = 2,                     
+      add = TRUE)
+
+qqnorm(DATA$difference,                            
+       main = "",                     
+       xlab = "Theoretical Quantiles",
+       ylab = "Sample Quantiles")    
+
+qqline(DATA$difference)
+
+shapiro.test(DATA$difference)
+
+t.test(DATA$difference, mu=0, alternative="two.sided")
+
+cohen_d = (mean(DATA$difference) - 0) / sd(DATA$difference)
+
+pwr.t.test(n = length(DATA$difference), d = cohen_d, sig.level = 0.05, type = "one.sample", alternative = "two.sided")
+
+
+pwr.t.test(power = 0.8, d = cohen_d, sig.level = 0.05, type = "one.sample", alternative = "two.sided")
+
+
+```
+
+Hypothesis: We are testing if the difference between a participants standing and laying blood pressure is different than 0. Our null hypothesis is that the difference between standing and laying blood pressure equals 0. The alternative is that the difference in laying and standing blood pressure does not equal 0. 
+
+Test: Because we have two measurements from each person, we will conduct a paired two-sided, one-sample t-test. This makes intuitive sense since this could account for individual differences in average blood pressure levels. 
+
+Significance Level: We will be using a standard value for significance/alpha of 0.05. 
+
+Assumptions: We can assume that the measurements of blood pressure for each person are independent of one another. The value of blood pressure is also continuous. The differences in blood pressure when shown on a boxplot exhibit no outliers. All of the normality tests confirm the normality assumption. The histogram plotted with a normal curve shows approximate normality. The qqplot shows approximate normality. Also, the Shapiro-Wilkes test gives us a p-value of 0.2057 which is greater than 0.05, so we fail to reject the hypothesis that the data is normally distributed. 
+
+Test: When we perform the paired t-test on the data, we obtain a 95% confidence interval of [0.951, 5.716]. Because of this we can be 95% confident that the true difference between standing and laying blood pressure is between 0.951 and 5.716 units. With the calculated test statistic of t(11) = 3.0794 and a coinciding p-value of 0.01048, we have significant evidence that we can reject our null hypothesis in favor of our alternative because our p-value is less than our alpha (0.01048 < 0.05). We have significant evidence that the difference in standing and laying blood pressure does not equal zero. 
+
+Power Analysis: By performing the power analysis of the differences in blood pressure, we obtain a power of 0.8, which is exactly sufficient to be sure we can detect a true difference in the blood pressures. In fact, 12 is the perfect number of samples needed to obtain a power of 0.8
+
+
+
+
+EXTRA PROBLEM 1.
+
+```{r}
+
+```
+
+EXTRA PROBLEM 2.
+
+```{r}
+
+```
+

@@ -1,0 +1,274 @@
+---
+title: "Lab11"
+author: "Max Warriner"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.
+
+```{r}
+old = c(25,30,20,35,40,25,33,50,65,60)
+new = c(27,28,19,36,38,25,32,52,67,58)
+soil = data.frame(old, new)
+```
+
+A.
+
+```{r}
+
+plot(soil$old, soil$new, xlab="krypton content(old)", ylab="krypton content(new)",cex.axis=1.5, cex.lab=1.5, cex=1.5)
+abline(lm(soil$old~soil$new),col='red',lwd=2)
+
+line = lm(old~new, data=soil) # Plot of residuals vs fitted values
+plot(line, which=1, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) 
+
+library(MVN) # PREFERRED APPROACH 1: Royston's test of bivariate normality
+mvn(data=soil, mvnTest = "royston", univariatePlot = "histogram", multivariatePlot = "contour")
+
+line = lm(old~new, data=soil)
+plot(line, which=4, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) # Cut offs people use are 4/n, and 1. n: number of samples.
+plot(line, which=5, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) # Points beyond dashed red curves are problematic
+
+par(mar = c(4, 5, 2, 1)) 
+line = lm(old~new, data=soil)
+plot(line, which=3, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3)
+
+#install.packages("lmtest")
+library(lmtest) #load lmtest library
+bptest(line)    #perform Breusch-Pagan Test
+
+```
+
+The measure of krypton content is a continuous variable. The two measurements are paired because they're from the same plot. We assume they are independently collected. A plot of our data shows an approximate linear relationship. The residuals shows a randomly scattered distribution. A visual show of the contours shows bivariate normality, as well as Royston value H of 1.05, and a p-value of 0.32. We cannot reject the alternative hypothesis of bivariate non-normality. The analysis using Cook's distance shows no data points with a greater distance than 1. There are two data points (9,10) greater than 0.4 (4/10), but we'll proceed with the test because of the robustness of the Pearson's Correlation test to outliers. Our data satisfies the homoscedasticity assumption with a Breusch-Pagan test value of 1.05 and a p-value of 0.3. 
+
+B. 
+Our null hypothesis is that the correlation (R) equals zero, and there is no significant correlation between the old and new treatments in krypton content. Our alternative is that the correlation (R) does not equal zero, and there is a significant correlation between the old and new treatments in krypton content. 
+
+```{r}
+
+cor.test(soil$old, soil$new) 
+PCC=cor.test(soil$old, soil$new)$estimate
+
+```
+After performing the Pearson's correlation, we observe a statistically significant t(8-df) of 25.96, and a p-value < 0.00001. Our correlation R = 0.99, giving us a strong positive correlation between the new and old treatments. Therefore, we reject our null hypothesis. We have strong indication that the new and old treatments are positively associated in their krypton levels. 
+
+C. 
+
+```{r}
+
+library(pwr)
+pwr.r.test(n = 10, r = 0.9941167, sig.level = 0.05, power = NULL, alternative = "two.sided")
+```
+Our power is 1. 
+
+D. SUMMARY
+A Pearson's correlation test was run to see if two methods of soil preparation are correlated in their krypton level. 10 paired samples were taken from different plots, each given both treatments. Initial analysis showed a linear relationship between the two variables as bivariate normality, with a
+Royston value H of 1.05, and a p-value of 0.32. There were no significant outliers assessed by the residuals. The data had homoscedasticity as assessed by the scale-location plot. We observe a statistically significant t(8-df) of 25.96, and a p-value < 0.00001. Our correlation R = 0.99, giving us a strong positive correlation between the new and old treatments. Therefore, we reject our null hypothesis. We have strong indication that the new and old treatments are positively associated in their krypton levels. The test has a power of 1.
+
+Q2.
+
+```{r}
+# Create vectors for each column
+monkeys = c("M1", "M2", "M3", "M4", "M5", "M6")
+dominance = c(1, 2, 3, 4, 5, 6)
+eggs_per_gram = c(4325, 3750, 2532, 1123, 623, 950)
+# Combine into a dataframe
+monkey_data = data.frame(Monkey = monkeys, Dominance = dominance, EggsPerGram = eggs_per_gram)
+monkey_data
+```
+
+A.
+
+```{r}
+
+plot(monkey_data$Dominance, monkey_data$EggsPerGram, xlab="Monkey Dominance", ylab="Nematode eggs / g", cex.axis=1.5, cex.lab=1.5, cex=1.5)
+
+```
+Both variables are either ordinal or continuous. The data is paired to each monkey. The data shows a mostly monotonic negative relationship between dominance and nematode eggs. 
+
+B.
+Our null hypothesis is that the correlation (rho) equals zero and there is no significant correlation between dominance and nematode eggs in feces for monkeys. Our alternative is that the correlation (rho) does not equal zero and there is a significant correlation between dominance and nematode eggs in feces for monkeys. 
+
+```{r}
+cor.test(monkey_data$Dominance, monkey_data$EggsPerGram, method="spearman", exact = TRUE) 
+#install.packages("DescTools")
+library(DescTools)
+SpearmanRho(monkey_data$Dominance, monkey_data$EggsPerGram, conf=0.95)
+
+```
+After performing the Spearman's rank correlation test, we obtain a statistically significant S value of 68 and a p-value of 0.02. Our rho equals -0.943 with a 95 percent confidence interval of [-0.994, -0.559], indicating a strong negative association. We reject our null hypothesis that there is no significant correlation between monkey dominance and nematode eggs in feces. 
+
+
+C.
+
+```{r}
+
+source("pwr.spearman.test.R")
+# Calculate the power
+pwr.spearman.test(6, -0.9428571, calculation_type = "power")
+# Calculate the sample size for desired power
+pwr.spearman.test(2, -0.9428571 , 0.8, calculation_type = "sample_size")
+
+
+```
+We obtain a power of 1. We needed 6 samples to achieve a sufficient power.
+
+
+D. SUMMARY:
+A Spearman Rank Correlation test was done to test if there was a significant association between monkey dominance and the presence of nematode eggs in their feces. Six different monkeys were ranked on their dominance and then had their feces measured for nematode eggs. A visual inspection of the data showed a roughly monotonic negative relationship. We obtained a statistically significant S value of 68 and a p-value of 0.02. Our rho equals -0.943 with a 95 percent confidence interval of [-0.994, -0.559], indicating a strong negative association. We reject our null hypothesis that there is no significant correlation between monkey dominance and nematode eggs in feces. 
+
+Q3.
+
+```{r}
+Temperature = seq(2,18,2)
+HeartRate = c(5,11,11,14,22,27,32,29,32)
+Pythons = data.frame(Temperature, HeartRate)
+```
+
+A.
+
+Our null hypothesis is that the slope of the line of regression comparing temperature to python heartbeat equals zero, and there's no relationship between the two. Our alternative is that the slope of the line doesn't equal zero, and there is an association between the two. 
+
+B.
+
+```{r}
+line = lm(HeartRate~Temperature, data=Pythons) 
+summary(line)                      # Provides the summary statistics for the regression line
+confint(line,'Temperature',level=0.95) # 95% Confidence Interval for the Slope
+```
+Our regression line is Heart Rate = 2.25 + 1.8083*Temperature. Temperature explains 92.99 percent of the variation in heart rate (R squared = 0.9299). A t(7 df) value of our slope gives us 9.635 and a p-value < 0.0001. We can reject the null hypothesis that the slope equals zero. A 95 percent confidence interval gives us [1.364513, 2.252154]. An increase in 1 degree Celsius on average leads to a 1.8 bpm increase in heart rate. 
+
+
+C.
+
+```{r}
+plot(Temperature, HeartRate, xlab="Temperature (c)", ylab="Heart Rate (bpm)",cex.axis=1.5, cex.lab=1.5, cex=1.5)
+abline(2.2500,1.8083 )
+
+```
+
+D.
+
+```{r}
+
+newdata = data.frame(Temperature=15)
+predict(line, newdata, interval="confidence")  # Our prediction, and its confidence interval
+
+
+```
+We predict that a temperature of 15 would, on average, lead to a heart rate of 29.375. A 95 percent confidence interval for that data point would be [26.18484, 32.56516].
+
+E.
+
+```{r}
+library(pwr)
+r2  = summary(line)$r.squared # R-squared for our linear model
+my.f2 = r2 / (1-r2)           # Effect Size
+my.u = 1                      # u = 1 (for simple linear regression)
+N=9                           # Total sample size is N
+my.v = N-my.u-1               # v = N - u - 1
+pwr.f2.test(u = my.u, v = my.v, f2 = my.f2, sig.level = 0.05, power = NULL) # Power of the linear regression
+pwr.f2.test(u = my.u, v = NULL, f2 = my.f2, sig.level = 0.05, power = 0.8)  # Total samples needed to get a power of 0.8.
+
+
+```
+We obtain a power of 1 with an effect size of 13.26, indicating a large effect. We would only need two samples for a power of 0.8.
+
+F. SUMMARY:
+A linear regression was done to assess the effect of temperature on the heart beat of pythons. We can assume the assumptions of the linear regression are met. Our regression line is Heart Rate = 2.25 + 1.8083*Temperature. Temperature explains 92.99 percent of the variation in heart rate (R squared = 0.9299). A t(7 df) value of our slope gives us 9.635 and a p-value < 0.0001. We can reject the null hypothesis that the slope equals zero. A 95 percent confidence interval gives us [1.364513, 2.252154]. An increase in 1 degree Celsius on average leads to a 1.8 bpm increase in heart rate. We predict that a temperature of 15 would, on average, lead to a heart rate of 29.375. A 95 percent confidence interval for that data point would be [26.18484, 32.56516]. We obtain a power of 1 with an effect size of 13.26, indicating a large effect. We would only need two samples for a power of 0.8.
+
+Q4.
+
+```{r}
+Sodium= c(1287, 1164, 1177, 1262, 1271, 1222, 1377, 1288, 1284, 1514.4, 1281, 1305, 1199, 1368, 1340, 1273, 1277, 1329, 1361, 1521.6, 1380, 1386, 1408, 1380, 1378, 1413, 1400, 1412, 1422, 1658.4, 1410, 1410, 1382, 1422, 1388, 1404, 1420, 1405, 1400, 1420, 1379, 1393, 1417, 1414, 1383)
+
+Calories = c(2069, 1990, 1975, 2116, 2161, 2091, 2236, 2198, 2190, 3201, 2128, 2190, 2070, 2266, 2216, 2203, 2040, 2248, 2265, 3276, 2441, 2234, 3543, 3411, 3110, 2662, 2790, 3535, 2745, 6009, 2771, 3365, 2795, 3333, 2730, 2707, 3010, 3989, 2752, 2959, 2758, 2897, 3504, 2696, 2479)
+
+Data=data.frame(Sodium, Calories)
+```
+
+A.
+
+```{r}
+plot(Sodium, Calories, xlab="Sodium (mg)", ylab="Calories",cex.axis=1.5, cex.lab=1.5, cex=1.5)
+abline(lm(Calories~Sodium),col='red',lwd=2)
+
+line = lm(Calories~Sodium, data=Data) # Run the lm() function, and save its results to line variable.
+set.seed(13)           # Set the seed for the random number generator for reproducibility.
+library(car)           # Durbin-Watson test uses randomly generated data. 
+durbinWatsonTest(line) 
+
+hist(line$residuals, freq=FALSE, xlab = "Residuals", main="",cex.axis=1.5,cex.lab=1.5)
+curve(dnorm(x,mean(line$residuals), sd(line$residuals)),add=TRUE,col=c('red'))
+qqnorm(line$residuals, main="")
+qqline(line$residuals)
+shapiro.test(line$residuals)
+
+plot(line, which=1, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) # Plot of residuals vs fitted values
+library(lmtest) #load lmtest library
+bptest(line)    #perform Breusch-Pagan Test
+
+plot(line, which=4, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) # Cut off we use is 4/n or 1.
+plot(line, which=5, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) # Points beyond dashed red curves are problematic
+
+```
+For this data, I would suggest using the Siegel regression instead of the simple linear regression. When plotted, the data does not show normality, and that is verified with a Shapiro-Wilkes test of the residuals where W = 0.92183 and a p-value of 0.004881. The Breusch-Pagan test fails the assumption of homoscedasticity with a BP(1 df) of 10.718 and a p-value of 0.001061. There is also a large outlier with 6000 calories intaken. Because of these failing assumptions, we'll use a Siegel regression.
+B.
+
+```{r}
+
+library(mblm)
+model.s = mblm(Calories ~ Sodium, data = Data) # Set 'repeated=FALSE' to use Theil-Sen method
+summary(model.s) # Display a summary of the regression model
+
+
+```
+Our Siegel regression equation is Calories = -4669.994 + 5.286*Sodium. This suggests that for every milligram more of sodium, a person's calorie intake increses by 5 calories. We obtain a V statistic of 1035 and a p-value < 0.0001. We can reject the hypothesis that sodium is not an indicator of caloric intake. 
+C.
+
+```{r}
+# Plot 'IncubTime' against 'Temp' from the 'hatching' dataset.
+plot(Sodium, Calories, xlab = "Sodium (mg)", ylab = "Calories", 
+      pch = 16, cex.lab = 1.5, cex.axis = 1.5)
+# Add the regression line from the Siegel model to the plot.
+abline(model.s, col = "blue", lwd = 2, lty = 3)
+# The legend indicates that the blue dotted line represents the Siegel regression line.
+legend("topleft", legend = c("Siegel"), col = c("blue"), lty = 1:3, cex = 1.3)
+
+
+```
+
+D.
+
+```{r}
+
+# Create a new data frame for making predictions at a specific temperature value (28.5 degrees).
+newdata = data.frame(Sodium = 1300)
+# Predict 'IncubTime' at the specified temperature, along with a confidence interval.
+predict(model.s, newdata, interval = "confidence")
+
+```
+Our model predicts that on average, a person consuming 1300 mg of sodium would consume 2201 calories with a 95 percent confidence interval of [2025.092, 2377.778].
+E.
+
+```{r}
+
+source("pwr.siegel.test.R") 
+desired_power = 0.8     # Desired power level
+n = 45   # Size of each simulated dataset
+sd = sd(Calories)     # Standard deviation of the noise
+m = 5.286               # Slope from Temp vs IncubTime
+x_min = min(Sodium)       # Minimum x
+x_max = max(Sodium)       # Maximum x
+pwr.siegel.test(sample_size = n, x_min = x_min, x_max = x_max, noise_level = sd, true_slope = m, n_simulations = 1000)
+pwr.siegel.test(desired_power = 0.8, x_min = x_min, x_max = x_max, noise_level = sd, true_slope = m, n_simulations = 1000, starting_sample_size = 5)
+
+
+```
+
+Our model has a power of 1. We would've only needed 9 samples to obtain a power of 0.8.
+
+F. SUMMARY:
+We fit a Siegel regression model to see if sodium intake (mg) is an indicator of overall calories. The linear fit of the model was analyzed through a visual inspection. Our Siegel regression equation is Calories = -4669.994 + 5.286*Sodium. This suggests that for every milligram more of sodium, a person's calorie intake increses by 5 calories. We obtain a V statistic of 1035 and a p-value < 0.0001. We can reject the hypothesis that sodium is not an indicator of caloric intake. Our model predicts that on average, a person consuming 1300 mg of sodium would consume 2201 calories with a 95 percent confidence interval of [2025.092, 2377.778].Our model has a power of 1. We would've only needed 9 samples to obtain a power of 0.8.

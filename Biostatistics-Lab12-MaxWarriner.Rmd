@@ -1,0 +1,227 @@
+---
+title: "Lab12"
+author: "Max Warriner"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.
+
+```{r}
+rm(list=ls())
+library(dplyr)
+VO2=read.csv("VO2.csv",header=T,sep=",") 
+VO2=dplyr::select(VO2,-caseno) # The first column is caseno. Caseno should not be used for regression since it is specific to each sample.
+attach(VO2)
+VO2 = VO2 |> mutate(gender = as.factor(gender))
+```
+
+A.
+
+```{r}
+# Create multiple scatterplots
+pairs(~VO2max + age + weight + heart_rate, data = VO2, main = 'Max Velocity Scatterplots')
+# Create a correlation matrix from selected columns and round it to two decimals
+round(cor(VO2[c("VO2max", "age", "weight", "heart_rate")]), 2)
+
+library(car)
+MulLinReg=lm(VO2max ~ age + weight + heart_rate + gender, data=VO2) # Removed the mheight for demonstration
+vif(MulLinReg)
+
+plot(MulLinReg, which = 1)
+library(lmtest)      # Load lmtest library
+bptest(MulLinReg)    # Perform Breusch-Pagan Test
+
+set.seed(13)
+library(car)
+durbinWatsonTest(MulLinReg)
+
+plot(MulLinReg, which = 4)
+plot(MulLinReg, which = 5)
+
+hist(MulLinReg$residuals, freq=FALSE, xlab = "Residuals", main="",cex.axis=1.5,cex.lab=1.5)
+curve(dnorm(x,mean(MulLinReg$residuals), sd(MulLinReg$residuals)), add=TRUE,col=c('red'))
+qqnorm(MulLinReg$residuals, main="")
+qqline(MulLinReg$residuals)
+shapiro.test(MulLinReg$residuals)
+
+```
+
+INTERPRETATION: Each of the independent variables is continuous except for gender, which can be factorized. The dependent variable, VO2Max is continuous. There is no colinearity between any of the independent variables. There is a rough linear relationship between each of the independent variables and the dependent variable, except for heart rate, which does not have a linear relationship. We obtain a Durbin Watson test statistic of 1.9 and a p-value of 0.6, indicating there is independence of the residuals. The Breusch-Pagan test gives a test statistic of 7.9, and a p-value of 0.09, indicating homoscedasticity in the data. A scatterplot using cook's distance shows that we have no outliers (d > 1). A histogram of the data shows approximate normality. We fail the Shapiro Wilk's test of the normality of the residuals, with a test statistic W of 0.97 and p-value of 0.03 < 0.05. 
+
+B. 
+
+```{r}
+
+MulLinReg=lm(VO2max ~ age + weight + heart_rate + gender, data=VO2)
+summary(MulLinReg)
+
+```
+
+INTERPRETATION: Our multivariable regression model for the max aerobic capacity is: VO2max = -0.17 * age -0.38 * weight - 0.12 * heart_rate + 13.20 * gender(going from female to male) - 87.83. The coefficients tell us the following: for every year increase in age, the VO2 max decreases by 0.17, for every increase in weight, the VO2 max decreases by 0.38, for every increase in heart rate during light training the VO2 max decreases by 0.12, and men tend to have a higher VO2 max than women by 13.21. The t-statistics and p-values for the factors were as follows: age(-2.633, 0.01), weight(-8.877, <0.001), heart rate(-3.667, < 0.001), and gender(9.824, < 0.001) The adjusted R-squared value of 0.56 tells us that 56% of the variability in VO2 max can be explained by these 4 factors. The F test statistic of 32.32(4,95 df) gives us a p-value < 0.001, indicating a significant model. 
+
+C. 
+
+```{r}
+
+newdata=data.frame(age=30, weight=80, heart_rate=133, gender = as.factor(1))
+predict(MulLinReg, newdata, interval="confidence")  # Our prediction, and its confidence interval
+
+
+
+```
+
+INTERPRETATION: Our model predicts that this person will have a VO2 max of 49.63, with a 95% confidence interval of [47.96, 51.29].
+
+D.
+
+```{r}
+library(MASS)
+step.model = stepAIC(MulLinReg, direction = "both", trace = FALSE) # Stepwise regression model
+summary(step.model)
+
+```
+
+INTERPRETATION: After performing stepwise elimination, it was determined that all of the factors are significant in predicting VO2 max, and removing any of them would decrease the performance of the model. Thus, we continue with our full model. 
+
+E.
+
+```{r}
+library(pwr)
+r2  = summary(MulLinReg)$r.squared          # R-squared for our linear model
+my.f2 = r2 / (1-r2)                    # Effect Size
+my.u = length(MulLinReg$coefficients)-1     # u = 3 (we have 3 independent variables)
+N=nrow(VO2)                   # Total sample size is N
+my.v = N-my.u-1                        # v = N - u - 1
+# POSTHOC POWER ANALYSIS: POWER OF THE REGRESSION ANALYSIS
+pwr.f2.test(u = my.u, v = my.v, f2 = my.f2, sig.level = 0.05, power = NULL) 
+
+# A-PRIORI POWER ANALYSIS: SAMPLE SIZE
+ceiling(pwr.f2.test(u = my.u, v = NULL, f2 = my.f2, sig.level = 0.05, power = 0.8)$v + my.u + 1)
+
+```
+
+INTERPRETATION: Our model has a power of 1. To obtain a power of 0.8, we would've needed only 15 samples. 
+
+F. The t-statistics and p-values for the factors were as follows: age(-2.633, 0.01), weight(-8.877, <0.001), heart rate(-3.667, < 0.001), and gender(9.824, < 0.001)
+
+SUMMARY: A multivariable linear regression was carried out to test the relationship between max aerobic capacity and the person's age, weight, heart rate during light training and gender. There was a significant relationship aerobic capacity and age(t = 2.633, p-value = 0.01), weight(t = -8.877, p-value < 0.001), heart rate(t = -3.667, p-value < 0.001) and gender(t = 9.824, p-value < 0.001). For every year increase in age, the VO2 max decreases by 0.17, for every increase in weight, the VO2 max decreases by 0.38, for every increase in heart rate during light training the VO2 max decreases by 0.12, and men tend to have a higher VO2 max than women by 13.21. The adjusted R-squared value of 0.56 tells us 56% of the variability in max aerobic capacity can be explained by age, weight, heart rate, and gender. 
+
+A prediction was made on the aerobic capacity of a 30-year-old male weighing 80 kg with a heart rate of 133 bpm. Our model predicts that this person will have a max aerobic capacity of 49.63, with a 95% confidence interval of [47.96, 51.29]. 
+
+The dependent variable, VO2Max is continuous. There is no colinearity between any of the independent variables. There is a rough linear relationship between each of the independent variables and the dependent variable, except for heart rate, which does not have a linear relationship. We obtain a Durbin Watson test statistic of 1.9 and a p-value of 0.6, indicating there is independence of the residuals. The Breusch-Pagan test gives a test statistic of 7.9, and a p-value of 0.09, indicating homoscedasticity in the data. A scatterplot using cook's distance shows that we have no outliers (d > 1). A histogram of the data shows approximate normality. We fail the Shapiro Wilk's test of the normality of the residuals, with a test statistic W of 0.97 and p-value of 0.03 < 0.05. 
+
+Q2.
+
+```{r}
+rm(list=ls())
+heart=read.csv("heart.csv", header=T, sep=",") 
+attach(heart)
+
+library(dplyr)       # For data manipulation (dplyr) 
+library(broom)       # For making model summary tidy
+library(visreg)      # For plotting logodds and probability 
+library(rcompanion)  # To calculate pseudo R-squared
+library(MASS)        # For stepwise model selection
+library(ROCR)        # To find the probability threshold for best accuracy
+library(car)         # For multicollinearity function vif()
+```
+
+A.
+
+```{r}
+heart <- heart |> mutate(HeartDisease = as.factor(HeartDisease), Gender = as.factor(Gender))
+
+# WE USE THE ENTIRE DATASET HERE
+model_logi = glm(HeartDisease~., data=heart, family = "binomial")      # Fitting a binary logistic regression
+summary(model_logi)
+
+step.model = stepAIC(model_logi, direction = "both", trace = FALSE)   # Stepwise regression model
+summary(step.model)
+
+```
+
+INTERPRETATION: We created a simpler model that doesn't include weight. The coefficients, t-values, and p-values for the log odds of heart disease are: age(coeff = 0.085, t = 3.005, p-value = 0.003), gender(coeff = 2.091, t = 3.275, p-value = 0.001), and VO2 max(coeff = -0.106, t = 2.753, p-value = 0.006).
+
+B. 
+
+```{r}
+
+model.final = glm(formula = HeartDisease ~ Age + Gender + VO2max, family = "binomial", data = heart)
+
+tidy(model.final, exponentiate = TRUE, conf.level = 0.95) # Odds ratio table
+
+nagelkerke(model.final) # Pseudo R_squared values and Likelyhood ratio test
+
+```
+
+INTERPRETATION: For every year older, the risk of heart disease increases by 8.8%. Being a man instead of a woman increases the risk of heart disease by 709.5%. Every increase in max aerobic capacity decreases the risk of heart disease by 10.1%. 
+C. 
+
+```{r}
+attach(heart) # COULD ACCESS INDIVIDUAL COLUMNS WITHOUT WRITING: Diabetes$pedigree
+round(cor(cbind(Age, Weight, Gender, VO2max)),2) # Note that we are not checking correlation for categorical variables.
+vif(model.final) # VIF assesses the relationships between each independent variable and all the other variables.
+
+plot(model.final, which=4, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) # Cut offs we use are 0.5, and 1. n: number of samples.
+plot(model.final, which=5, cex.lab=1.3,cex.axis=1.3, cex=1.3, cex.id = 1.3, cex.caption = 1.3) # Points beyond dashed red curves are problematic
+
+pred = predict(model.final, heart, type="response") 
+logodds=logit(pred)
+pairs(~logodds + Age + Weight + VO2max, data=heart)
+
+```
+
+INTERPRETATION: The dependent variable is binary. The observations are independent of each other. The nominal variable is mutually exclusive. There are 25 observations per independent variable, greater than 15. There is a slight correlation between weight & gender, weight & VO2 max, and gender & VO2 max. However, none of the correlations are greater than 0.8 or less than -0.8. There are no significant outliers (cooks distance > 1). The scatterplots show us that there is a linear relationship between each of the independent variables and the dependent variable. Because all of these assumptions are satisfied, we have justified use of logistic regression in this model. 
+
+D.
+
+```{r}
+heart.test <- read.csv("heartTest.csv") |> mutate(Gender = as.factor(Gender), HeartDisease = as.factor(HeartDisease))
+
+pred = predict(model.final, heart.test, type="response")  # Predict the test dataset
+predicted = round(pred)  # Round of the value; >0.5 will convert to 1 else 0
+predicted
+tab = table(Predicted = predicted, Reference = heart.test$HeartDisease) # Creating a contingency table
+tab
+AllTestSamples = tab[1,1] + tab[1,2] + tab[2,1] + tab[2,2]
+Accuracy = (tab[1,1]+tab[2,2]) / AllTestSamples     # Accuracy=(Correct Predictions)/(All Test Samples)
+Accuracy         
+BaselineAccuracy = max(tab[1,1] + tab[2,1], tab[1,2] + tab[2,2]) / AllTestSamples
+BaselineAccuracy # BaselineAccuracy = (Number of Samples in the Larger Category)/(All Test Samples)
+
+new.heart <- data.frame(Age = 46, Gender = as.factor(1), Weight = 88, VO2max = 43)
+pred2 = predict(model.final, new.heart, type="response")  # Predict the test dataset
+predicted2 = round(pred2)  # Round of the value; >0.5 will convert to 1 else 0
+predicted2
+```
+
+Interpretation: Our model was 100% effective at predicting heart disease. For a 46-year-old male weighing 88 kg and a max aerobic capacity of 43, we predict that that person would have heart disease. 
+
+E. SUMMARY
+
+A binomial logistic regression was performed to determine the effect of age, weight, gender and maximum aerobic capacity on the likelihood of having heart disease. 
+
+The dependent variable is binary. The observations are independent of each other. The nominal variable is mutually exclusive. There are 25 observations per independent variable, greater than 15. There is a slight correlation between weight & gender, weight & VO2 max, and gender & VO2 max. However, none of the correlations are greater than 0.8 or less than -0.8. There are no significant outliers (cooks distance > 1). The scatterplots show us that there is a linear relationship between each of the independent variables and the dependent variable. 
+
+After performing a stepwise analysis, we obtained a simpler model not including weight. The coefficients, t-values, and p-values for the log odds of heart disease are: age(coeff = 0.085, t = 3.005, p-value = 0.003), gender(coeff = 2.091, t = 3.275, p-value = 0.001), and VO2 max(coeff = -0.106, t = 2.753, p-value = 0.006). We obtained a McFadden's pseudo R-squared of 0.21, indicating a moderate model fit. We also obtained the odds ratios of the remaining factors. For every year older, the risk of heart disease increases by 8.8%. Being a man instead of a woman increases the risk of heart disease by 709.5%. Every increase in max aerobic capacity decreases the risk of heart disease by 10.1%. 
+
+
+Q3.
+
+A. A multivariable linear regression would be appropriate here, since you are measuring the effect of two continuous variables (food intake and exercise) on another continuous variable (lifespan).
+
+B. This would work with a randomized block ANOVA. Since we do not care about the effect of IQ on test scores, the IQ would be the blocking variable so then we can test the effect of the teaching methods. 
+
+C. A multivariable logistic regression would be appropriate here because the dependent variable is binary(good or bad).
+
+D. You could use a Spearman's rank correlation to see if income is associated with dental health. Because the dependent variable is ordinal instead of continuous, a non-parametric alternative to Pearson's correlation.
+
+E. The researcher should use a Kruskwal-Wallis test. Because there are independent variable is categorical, and the dependent variable is ordinal, this will serve well as a non-parametric version of a one way ANOVA. 
+
+F. You could use a multivariable linear regression. Because the independent variable(tyrptophan amount) and the dependent variable(time awake) are both continuous. 
+
+G. You could use a two-sample t-test to test if the means are the same for both colleges. If the data doesn't meet the assumptions for the two-sample t-test, you could use a Mann Whitney U test. 
+
+H. They should use a two-way ANOVA because there are two categorical (one nominal, one ordinal) independent variables affecting a continuous dependent variable. If the assumptions don't meet the assumptions for a two-way ANOVA, they should use a Scheirer-Ray-Hare test instead. 

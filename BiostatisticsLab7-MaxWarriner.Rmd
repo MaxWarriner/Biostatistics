@@ -1,0 +1,175 @@
+---
+title: "Lab7"
+author: "Max Warriner"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.
+
+```{r}
+library(car)
+library(pwr)
+library(emmeans)
+library(rstatix)
+library(dplyr)
+
+NS = c(3.94,3.89,3.65,3.00,2.95,3.48,3.61,3.98)
+LS = c(3.84,3.89,3.44,2.62,3.72,2.59,2.90,2.38)
+MS = c(3.44,3.10,3.48,1.33,3.30,3.58,2.04,2.84)
+HS = c(2.49,2.87,2.68,2.78,3.33,3.13,2.42,2.54)
+FEF = c(NS, LS, MS, HS)
+group = factor(rep(c("Non-Smoker", "Light-Smoker", "Moderate-Smoker","Heavy-Smoker"), each = 8))
+smoking = data.frame(FEF, group)
+
+```
+
+a.
+
+```{r}
+my.anova = lm(FEF ~ group, data = smoking)
+
+hist(my.anova$residuals, freq=FALSE, xlab="Residuals", main="Residuals Histogram")
+curve(dnorm(x, mean(my.anova$residuals), sd(my.anova$residuals)), add=TRUE, col='red')
+qqnorm(my.anova$residuals); qqline(my.anova$residuals)
+shapiro.test(my.anova$residuals)  # Shapiro-Wilk test
+
+# Boxplot and Outlier Identification
+boxplot(FEF ~ group, data=smoking, ylab="FEF", xlab="Group")
+get_outliers = function(data) {which(data %in% identify_outliers(data.frame(data))[[1]])}
+list(Non_Smoker_outliers = get_outliers(NS), Light_Smoker_outliers = get_outliers(LS), Moderate_Smoker_outliers  = get_outliers(MS), Heavy_Smoker_outliers = get_outliers(HS))
+
+bartlett.test(FEF ~ group, data = smoking)
+
+
+```
+
+Interpretation:
+
+The residuals of the ANOVA model follow a rough normal distribution after analysis with the histrogram, qqplot, as well as a non-significant p-value from the Shapiro-Wilkes test. When looking at a boxplot of each of the different groups we detect no outliers, however when applying our outlier function we see that the moderate smokers have 4 outliers. We will note their existence and continue on with the test. We also see when performing the Bartlett test that the groups show homogeneity of variances, by obtaining a p-value greater than 0.05 so we fail to reject the alternative that the variances are hetergeneous. 
+
+b.
+
+```{r}
+anova_df = as.data.frame(Anova(my.anova, type = "III"))
+anova_df
+
+# Calculate mean and SEM for each group
+summary_stats <- smoking %>% group_by(group) %>% 
+                  summarise(mean_FEF = mean(FEF), sem = sd(FEF) / sqrt(n())) %>%
+                  mutate(mean_sem = paste0(round(mean_FEF, 2), " ± ", round(2 * sem, 2)))
+summary_stats # Display the summary
+
+```
+
+Interpretation:
+Our null hypothesis is that the means of the FEFs of the four groups are equal. Our alternative is that the means of the FEFS are not all equal. When performing the one-way fixed effects ANOVA, we obtain a statistically significant p-value among the variances in the groups: F(3,28) = 3.03, p-value = 0.046.
+
+
+c.
+
+```{r}
+emmeans_results = emmeans(my.anova, ~ group)
+pairs(emmeans_results, adjust = "tukey") # Perform Tukey HSD test with BH
+
+
+```
+
+Interpretation:
+After performing a Tukey-Test and comparing the means from all of the groups, we only obtain one statistically significant p-value. This shows us that only the difference in means of the Heavy-Smokers and the Non-Smokers are statistically significant, obtaining a p-value less than 0.05. 
+
+d. 
+
+```{r}
+# Extract SSB and SSW for effect size calculation
+SSB = anova_df["group", "Sum Sq"]
+SSW = anova_df["Residuals", "Sum Sq"]
+# Calculate Cohen's f
+eta_squared = SSB / (SSB + SSW)
+fvalue = sqrt(eta_squared / (1 - eta_squared))
+# Calculate harmonic mean of group sizes for the power analysis
+group_sizes = table(smoking$group)
+harmonic_mean_n = length(group_sizes) / sum(1 / group_sizes)
+# Perform post hoc power analysis
+pwr.anova.test(k = length(group_sizes), n = harmonic_mean_n, f = fvalue, sig.level = 0.05)
+
+# Define a desired power level and effect size (e.g., f = 0.25 for a medium effect)
+desired_power = 0.8
+estimated_effect_size = 0.5698037  # Adjust this value as needed
+# Calculate required sample size for each group
+pwr.anova.test(k = 4, f = estimated_effect_size, sig.level = 0.05, power = desired_power)
+
+
+```
+
+Interpretation:
+When performing a post-hoc power analysis of our ANOVA test, we obtain a power of 0.71 and an effect size of 0.57. This means we do not have sufficient power to detect a difference in the means of the groups compared, as we're comparing it to a power of 0.8. After performing another power analysis, we see that we would've needed at laest 10 samples from each group to obtain a sufficient power of 0.8.
+
+
+e. Summary:
+
+We conducted a one-way ANOVA analysis to see if there was a difference in means of FEF levels in non-smokers, light-smokers, moderate-smokers, and heavy-smokers. We took 8 samples from each group. 
+
+Our null hypothesis is that the mean FEF value for each group is equal and our alternative hypothesis is that the mean FEF of all the groups are not equal. 
+
+Normality checks such as a histogram of the residuals, as well as a Shapiro-Wilkes Normality test showed that our data followed a roughly normal distribution (W(0.94) = p-value of 0.07). The boxplot analysis showed that we had several outliers according to our function, however because the R boxplot showed zero outliers, we decided to continue with the test regardless. The homogeneity of the variances of the different groups was tested using a Bartlett test, showing that we failed to reject their homogeneity (K(6.5,3) = p-value of 0.09). 
+
+Data is presented as mean ± 2*SEM. FEF measurements were as follows: Non-Smokers (3.56 ± 0.28), Light-Smokers (3.17 ± 0.44), Moderate-Smokers (2.89 ± 0.57), and Heavy-Smokers (2.78 ± 0.23). The differences between these treatment groups were statistically significant, F(3, 8) = 3.030311, p =  0.046. The power of the ANOVA test was insufficient (0.71 < 0.8), indicating insufficient ability to detect a difference in the means. We would have needed at least 10 samples from each category to obtain a power of 0.8.
+
+A Tukey HSD test showed us that we obtained only one statistically significant difference in mean FEF values between Heavy-Smokers and Non-Smokers: t(28) = -2.757, p-value = 0.0471. This gives us significant reason to believe that Non-Smokers have higher mean FEF values than Non-Smokers. 
+
+
+Q2.
+
+a.
+
+```{r}
+dementia <- read.csv("dementia.csv") |>
+  mutate(Diagnosis = as.factor(Diagnosis))
+
+my.anova = lm(Ratio ~ Diagnosis, data = dementia)
+anova_df = as.data.frame(Anova(my.anova, type = "III"))
+anova_df
+
+```
+
+Interpretation:
+Our null hypothesis is that the means of the ratio of the proteins are equal for all groups. The alternative hypothesis is that the means of the ratio of the proteins is not equal for all groups. After performing a one-way ANOVA test, we obtain that a statistically significant p-value (F(3,76) = 567.5976, p-value < 0.0001) indicating that all of the means of the ratios are not equal among all groups.
+
+b.
+
+```{r}
+# Planned Contrasts with emmeans
+contrasts(dementia$Diagnosis) = matrix(c(1,-3,1,1,2,0,-1,-1,0,0,1,-1), ncol = 3)
+contrasts(dementia$Diagnosis)
+marginal_means = emmeans(my.anova, "Diagnosis")
+contrast(marginal_means, list("ALZ + ODM + TBI vs. HTH" = c(1,-3,1,1),"ALZ vs. ODM + TBI" = c(2,0,-1,-1),"ODM vs. TBI" = c(0,0,1,-1)))
+
+# Define the contrasts
+c1 = c(1, 1, 1, -3)
+c2 = c(2, -1, -1, 0)
+c3 = c(0, 1, -1, 0)
+dot_product1 = sum(c1 * c2) # Compute the dot product
+dot_product2 = sum(c1 * c3) # Compute the dot product
+dot_product3 = sum(c2 * c3) # Compute the dot product
+dot_product1
+dot_product2
+dot_product3
+```
+ 
+Interpretation:
+
+Our results of the linear contrast test show us that each of our tests gives a significant results with all p-values being less than 0.0001.
+
+Q3.
+
+a.
+
+b.
+
+Extra Practice Problem 1.
+
+```{r}
+
+```

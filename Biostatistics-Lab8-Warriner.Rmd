@@ -1,0 +1,424 @@
+---
+title: "Lab8"
+author: "Max Warriner"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.
+
+```{r}
+library(car)        # Load necessary libraries
+library(ggplot2)
+library(lme4)
+library(lmerTest) 
+library(emmeans)
+
+fat_content_data <- data.frame(
+  FatContent = c(13.5, 13.4, 14.1, 14.2,  # Site A
+                 13.2, 12.7, 12.6, 13.9,  # Site B
+                 16.8, 17.2, 16.4, 17.3,  # Site C
+                 18.1, 17.2, 18.7, 18.4), # Site D
+  Site = factor(rep(c("Site A", "Site B", "Site C", "Site D"), each = 4))  # Grouping variable
+)
+fat_content_data$Site = as.factor(fat_content_data$Site)
+head(fat_content_data)
+```
+
+a.
+
+```{r}
+library(dplyr)
+percent.transformed <- fat_content_data |>
+  mutate(FatContent = sqrt(FatContent/100))
+
+head(percent.transformed)
+
+```
+
+Interpretation:
+
+b.
+
+```{r}
+
+my.anova = lmer(FatContent ~ (1|Site), data = percent.transformed) # Fit a Model II ANOVA with Species as a random effect
+residuals = residuals(my.anova)
+
+hist(residuals, freq=FALSE, xlab="Residuals", main="Residuals Histogram")
+curve(dnorm(x, mean(residuals), sd(residuals)), add=TRUE, col='red')
+qqnorm(residuals); qqline(residuals)
+shapiro.test(residuals)  # Shapiro-Wilk test
+
+# Boxplot
+boxplot(FatContent ~ Site, data=percent.transformed, ylab="Fat Content", xlab="Site")
+
+bartlett.test(FatContent ~ Site, data = percent.transformed) # Bartlett's Test
+
+
+```
+
+Interpretation: Our transformed data matches all the assumptions of a one-way ANOVA. The histogram plot of the residuals and the Shapiro-Wilkes test confirm that we cannot reject the assumption of normality of our residuals with a p-value of 0.6005. The Bartlett test of variances shows that we also cannot reject the assumption of equal variances amongst all of the sites. A boxplot analysis of the transformed data shows that we also have no significant outliers. Because of all of these, we can proceed with a one-way ANOVA test. 
+
+c.
+
+```{r}
+ranova(my.anova) # Likelihood Ratio Test (LRT) for the random effect
+
+```
+
+Interpretation: Our null hypothesis is that the variance of the fat content in the transformed data is not due to the different sites. Our alternative is that the variance of the fat content in the transformed data is due in part to the site where it was made. 
+
+Our alpha significance value is sert at 0.05.
+
+After performing a one-way ANOVA test on the transformed data, we reject the null hypothesis that the variability in the fat content of the transformed data is not due to the site where it was produced. We obtained a chi-square test statistic (1 df) of 29.622, with a corresponding p-value < 0.0001. Because this is lower than our specified alpha, we reject our null hypothesis. We have significant evidence that the transformed data variance is due to the site. 
+
+d.
+
+```{r}
+
+random_effect = "Site" # Define the random effect variable
+# Extract variance components
+var_components = VarCorr(my.anova)
+# Extract the variance for the random effect and residuals
+random_variance = as.numeric(attr(var_components[[random_effect]], "stddev"))^2
+residual_variance = attr(var_components, "sc")^2
+total_variance = random_variance + residual_variance
+# Calculate the percentage of variance explained by the random factor and residuals
+percent_random_variance = (random_variance / total_variance) * 100
+percent_residual_variance = (residual_variance / total_variance) * 100
+# Print the results
+cat("Variance explained by", random_effect, "(random factor):", round(percent_random_variance, 2), "%\n")
+cat("Residual variance (unexplained):", round(percent_residual_variance, 2), "%\n")
+
+
+```
+
+Interpretation: We calculated that 95.36% of the variability in the transformed fat content is due to the different sites.  
+
+Q2.
+
+```{r}
+# Create a dataframe in long format for ANOVA
+study_hours_data <- data.frame(
+  StudyHours = c(5, 27, 50, 55, 70, 10, 15, 45, 60, 80,   # Biology
+                 14, 17, 16, 18, 19, 21, 18, 20, 22, 19,  # Chemistry
+                 20, 21, 22, 23, 24, 24, 25, 26, 27, 28), # Physics
+  Department = factor(rep(c("Biology", "Chemistry", "Physics"), each = 10))  # Grouping variable
+)
+
+# Display the created dataframe
+study_hours_data$Department = as.factor(study_hours_data$Department)
+head(study_hours_data)
+```
+
+a.
+
+```{r}
+my.anova = lm(StudyHours ~ Department, data = study_hours_data)
+
+hist(my.anova$residuals, freq=FALSE, xlab="Residuals", main="Residuals Histogram")
+curve(dnorm(x, mean(my.anova$residuals), sd(my.anova$residuals)), add=TRUE, col='red')
+qqnorm(my.anova$residuals); qqline(my.anova$residuals)
+shapiro.test(my.anova$residuals)  # Shapiro-Wilk test
+
+boxplot(StudyHours ~ Department, data=study_hours_data, ylab="Study Hours", xlab="Department")
+
+bartlett.test(StudyHours ~ Department, data = study_hours_data) # Bartlett's Test
+
+```
+
+Interpretation: Our data fails the assumptions for one-way ANOVA. The histogram and qqplot as well as the Shapiro Wilkes test show that are data is not normally distributed (p-value < 0.001). We don't have any outliers, however the variances of our data are not equal, as indicated by a p-value < 0.001 for the Bartlett test of variances. 
+
+b.
+
+```{r}
+library(dplyr)
+library(rstatix)
+
+# Filter data for different dog sizes and extract their 'Trainability' scores
+Biology = study_hours_data %>% filter(Department == "Biology") %>% pull(StudyHours)
+Chemistry = study_hours_data %>% filter(Department == "Chemistry") %>% pull(StudyHours)
+Physics = study_hours_data %>% filter(Department == "Physics") %>% pull(StudyHours)
+
+p1 = ks.test(Biology, Chemistry)$p.value 
+p2 = ks.test(Biology, Physics)$p.value 
+p3 = ks.test(Chemistry, Physics)$p.value 
+
+# Adjust the p-values for multiple comparisons using the Benjamini-Hochberg method
+p.adjust(c(p1, p2, p3), method="BH")
+
+kruskal.test(StudyHours ~ Department, data=study_hours_data)
+
+all_ranks = rank(c(Biology, Chemistry, Physics))
+
+mean(all_ranks[1:length(Biology)])
+mean(all_ranks[(length(Biology) + 1):(length(Biology) + length(Chemistry))])
+mean(all_ranks[(length(Biology) + length(Chemistry) + 1):length(c(Biology, Chemistry, Physics))])
+
+```
+
+Interpretation: Our null hypothesis is that the mean ranks of the study hours are equal across departments. Our alternative hypothesis is that the mean ranks of the study hours are not equal across departments. 
+
+We set our significance level alpha of 0.05. 
+
+The Kolmogorov-Smirnov test shows us that the distributions are not similar (all p-values < 0.05), so we will be comparing mean ranks.
+
+After performing the Kruskal-Wallis test on the data, we obtain a chi-square statistic (2 df) of 8.6735 and a p-value of 0.01308. Because this p-value is less than our specified alpha (0.01308 < 0.05), we reject our null hypothesis that the mean ranks of the study hours by department are all equal. We have evidence that the mean ranks of study hours are not equal across the different departments. 
+
+c.
+
+```{r}
+library(FSA)
+dunnTest(study_hours_data$StudyHours, study_hours_data$Department, method="bh")
+
+```
+
+Interpretation: After performing the Dunn test on the data, it shows that there is statistically significant differences in mean ranks of the Biology vs. Chemistry and Biology vs. Physics. 
+
+d. 
+
+```{r}
+# library(fitdistrplus) # Load the library
+# x = Physics  # Replace with actual dataset
+# distributions = c("norm", "weibull", "gamma", "logis", "exp", "pois", "geom", "nbinom") # Distributions to fit
+# 
+# fit_list = list() # Fit distributions
+# for (dist in distributions) {
+#   fit = tryCatch({
+#     fitdist(x, dist)
+#   }, error = function(e) {
+#     cat("\nError in fitting", dist, ":", e$message, "\n")
+#     return(NULL)
+#   })
+#   if (!is.null(fit)) fit_list[[dist]] = fit
+# }
+# 
+# # Gather goodness-of-fit stats
+# fit_stats = data.frame(Distribution = character(), AIC = numeric(), BIC = numeric(), LogLikelihood = numeric(), Parameters = character(), stringsAsFactors = FALSE)
+# for (dist in names(fit_list)) {
+#   fit = fit_list[[dist]]
+#   params_str = paste(names(coef(fit)), "=", round(coef(fit), 4), collapse = ", ")
+#   fit_stats = rbind(fit_stats, data.frame(Distribution = dist, AIC = fit$aic, BIC = fit$bic, LogLikelihood = fit$loglik, Parameters = params_str))
+# }
+# 
+# print(fit_stats) # Display fit stats
+
+#Biology is "norm", mean = 41.7, sd = 24.7792
+#Chemistry is "norm", mean = 18.4, sd = 2.245
+#Physics is "norm", mean = 24, sd = 2.4495
+
+
+source("pwr_kruskal_test.R")
+pwr_kruskal_test(group_sizes = c(length(Biology),length(Chemistry),length(Physics)), 
+                                   dist_list = list("norm", "norm", "norm"), 
+                                   params_list = list(list(mean = 41.7, sd = 24.7792), 
+                                                      list(mean = 18.4, sd = 2.245), 
+                                                      list(mean = 24, sd = 2.4495)))
+
+pwr_kruskal_test(desired_power = 0.8, 
+                  dist_list = list("norm", "norm", "norm"), 
+                                   params_list = list(list(mean = 41.7, sd = 24.7792), 
+                                                      list(mean = 18.4, sd = 2.245), 
+                                                      list(mean = 24, sd = 2.4495)), 
+                  start_size = 2)
+
+```
+
+Interpretation: After performing a power analysis, we obtain a power of 0.972, sufficient to detect a difference in mean ranks. We would've only needed 7 samples from each group to obtain a power of 0.8
+
+e. SUMMARY:
+We performed a Kruskal Wallis test to see if study hours differed based on the department of the students. We obtained 10 samples from each department: Biology, Chemistry and Physics. THe mean ranks are: Biology = 19.45, Chemistry = 8.85, and Physics = 18.2. Assumptions of equal distributions failed so we compared mean ranks. After performing the test, the differences in mean ranks was statistically significant: chi square(2 df) = 8.6735, p-value = 0.01308. Because of this, we reject our null hypothesis of equal mean ranks of study hours across all of the departments. After performing a follow-up Dunn test with BH p-value corrections, we see statistically significant differences in mean ranks between Biology vs. Chemistry (p = 0.02) and Biology vs. Physics (p = 0.03). The power analysis of our data showed sufficient power at a level of 0.97. 
+
+
+
+Q3.
+
+```{r}
+# Create a dataframe for two-way ANOVA with correct structure
+SystolicBP = c(108, 110, 90, 80,    # Male Adolescent
+              120, 125, 130, 120,  # Male Mature
+              145, 150, 130, 155,  # Male Old
+              110, 105, 100, 90,   # Female Adolescent
+              110, 105, 115, 100,  # Female Mature
+              130, 125, 135, 130)  # Female Old
+Sex = factor(rep(c("Male", "Female"), each = 12))  # Grouping variable for Sex
+Age <- factor(c(rep("Adolescent", 4), rep("Mature", 4), rep("Old", 4),
+                rep("Adolescent", 4), rep("Mature", 4), rep("Old", 4)))
+
+# Combine everything into the dataframe
+blood_pressure_data <- data.frame(SystolicBP, Sex, Age)
+
+# Display the created dataframe
+blood_pressure_data$Sex = as.factor(blood_pressure_data$Sex)
+blood_pressure_data$Age = as.factor(blood_pressure_data$Age)
+blood_pressure_data
+```
+
+a.
+1: Sex
+Null hypothesis: There is no significant difference in BP between hamsters of different sexes.
+Alternative hypothesis: There is a significant difference in BP between hamsters of different sexes.
+
+2: Age
+Null hypothesis: There is no significant difference in BP between hamsters of different ages.
+Alternative hypothesis: There is a significant difference in BP between hamsters of different ages.
+
+3: Interaction of Sex and Age
+Null Hypothesis: There is no interaction between Sex and Age when measuring BP
+Alternative Hypothesis: There is an interaction between Sex and Age when measuring BP
+
+b.
+
+```{r}
+library(car)  # Load the 'car' library
+options(contrasts = c(unordered = "contr.sum", ordered = "contr.poly")) # Set contrast options for factors (unordered and ordered)
+my.anova = lm(SystolicBP ~ Sex * Age, data = blood_pressure_data) # Fit the linear model (two-way ANOVA with interaction)
+Anova(my.anova, type = "III") # Perform Type III ANOVA
+
+```
+
+Interpretation: There is no significant interaction between sex and age in affecting blood pressure in hamsters (p-value = 0.06010 > 0.05). Both Sex and Age have significant effects on BP, with p-values 0.02402 and < 0.0001 respectively.
+
+c.
+
+```{r}
+interaction.plot(
+  x.factor = blood_pressure_data$Age,
+  trace.factor = blood_pressure_data$Sex,
+  response = blood_pressure_data$SystolicBP,
+  type = "b",
+  ylab = "Systolic Blood Pressure",
+  xlab = "Age",
+  lty = c(1, 2, 3),
+  lwd = 2,
+  pch = c(0, 19, 2),
+  legend = FALSE
+)
+
+# Add a legend for Diet in the top-right corner
+legend(
+  x = "topright",
+  legend = c("Female", "Male"),
+  bty = "n",
+  lty = c(1, 2, 3),
+  lwd = 2,
+  pch = c(0, 19, 2),
+  title = "",
+  inset = 0.02
+)
+
+
+
+```
+
+Interpretation: The interaction plot shows roughly similar line shapes for both sexes.
+
+d.
+
+```{r}
+emm_results = emmeans(my.anova, ~ Age)
+summary(emm_results)
+pairs(emm_results, adjust = "tukey") # Tukey's pairwise comparisons
+
+```
+
+Interpretation: When doing a Tukey follow-up test for effect of sex, we obtain significant results for differences between male and female hamsters with a t(18 df) = -2.464, p-value = 0.0240. When testing for effect of age, we obtain significant results for comparisons between every age group: Adolescent - Mature (t(18 df) = -3.689, p-value = 0.0045), Adolescent - Old (t(18 df) = -8.579, p-value < .0001), and Mature - Old (t(18 df) = -4.891, p-value = 0.0003).
+
+e.
+
+```{r}
+library(pwr)
+# Fit the two-way ANOVA model using lm
+lm_model = lm(SystolicBP ~ Sex * Age, data = blood_pressure_data)
+anova_results = Anova(lm_model, type = "III")  
+
+# Parameters for power and sample size analysis
+alpha = 0.05            # Significance level
+power_target = 0.8      # Desired power
+
+# Extracting sums of squares
+SS_A = anova_results["Sex", "Sum Sq"]
+SS_B = anova_results["Age", "Sum Sq"]
+SS_AB = anova_results["Sex:Age", "Sum Sq"]
+SS_Error = anova_results["Residuals", "Sum Sq"]
+
+# Calculate total sum of squares
+SS_Total = SS_A + SS_B + SS_AB + SS_Error
+
+# Calculate overall model effect size
+f2_overall = (SS_A + SS_B + SS_AB) / SS_Error
+
+# Calculate effect sizes for main effects and interaction
+f2_A = SS_A / SS_Error
+f2_B = SS_B / SS_Error
+f2_AB = SS_AB / SS_Error
+
+# Output effect sizes
+cat("Effect size (Cohen's f²) for Overall Model:", f2_overall, "\n")
+cat("Effect size (Cohen's f²) for Sex:", f2_A, "\n")
+cat("Effect size (Cohen's f²) for Age:", f2_B, "\n")
+cat("Effect size (Cohen's f²) for Interaction:", f2_AB, "\n")
+
+my.u =  sum(anova_results$Df[2:4]) 
+my.v = anova_results$Df[5]  
+power_calculated_overall = pwr.f2.test(u = my.u, v = my.v, f2 = f2_overall, sig.level = alpha)
+
+my.u1 =  sum(anova_results$Df[2]) 
+power_calculated_main1 = pwr.f2.test(u = my.u1, v = my.v, f2 = f2_A, sig.level = alpha)
+
+my.u2 =  sum(anova_results$Df[3]) 
+power_calculated_main2 = pwr.f2.test(u = my.u2, v = my.v, f2 = f2_B, sig.level = alpha)
+
+my.u3 =  sum(anova_results$Df[4]) 
+power_calculated_interaction = pwr.f2.test(u = my.u3, v = my.v, f2 = f2_AB, sig.level = alpha)
+
+# Display calculated power
+cat("Calculated power for the sample size for Overall Model is:", power_calculated_overall$power, "\n")
+cat("Calculated power for the sample size for main effect of Sex is:", power_calculated_main1$power, "\n")
+cat("Calculated power for the sample size for main effect of Age is:", power_calculated_main2$power, "\n")
+cat("Calculated power for the sample size for interaction term is:", power_calculated_interaction$power, "\n")
+
+
+
+power_target = 0.8
+my.u =  sum(anova_results$Df[2:4]) 
+my.v = anova_results$Df[5] 
+sample_size_result_overall = pwr.f2.test(u = my.u, v = NULL, f2 = f2_overall, sig.level = alpha, power = power_target)        
+
+# Sample size calculation for main effect of Factor 1
+my.u1 =  sum(anova_results$Df[2]) 
+sample_size_result_main1 = pwr.f2.test(u = my.u1, v = NULL, f2 = f2_A, sig.level = alpha, power = power_target)    
+# Sample size calculation for main effect of Factor 2
+my.u2 =  sum(anova_results$Df[3]) 
+sample_size_result_main2 = pwr.f2.test(u = my.u2, v = NULL, f2 = f2_B, sig.level = alpha, power = power_target)    
+# Sample size calculation for interaction term
+my.u3 =  sum(anova_results$Df[4]) 
+sample_size_result_interaction = pwr.f2.test(u = my.u3, v = NULL, f2 = f2_AB, sig.level = alpha, power = power_target)        
+
+# Calculate required total sample size (N) for each calculation
+required_sample_size_overall = ceiling(sample_size_result_overall$v) + my.u +1
+required_sample_size_main1 = ceiling(sample_size_result_main1$v) + my.u +1
+required_sample_size_main2 = ceiling(sample_size_result_main2$v) + my.u +1
+required_sample_size_interaction = ceiling(sample_size_result_interaction$v) + my.u +1
+
+# Output results for main factors, interaction term, and overall model
+cat("Required sample size per group to achieve power of 0.8 for Overall Model:", required_sample_size_overall, "\n")
+cat("Required sample size per group to achieve power of 0.8 for main effect of Sex:", required_sample_size_main1, "\n")
+cat("Required sample size per group to achieve power of 0.8 for main effect of Age:", required_sample_size_main2, "\n")
+cat("Required sample size per group to achieve power of 0.8 for interaction term:", required_sample_size_interaction, "\n")
+
+```
+
+Interpretation: We have an overall effect size of 4.820086 for the model, with a power of 1. This shows we have sufficient power overall. 
+
+f. SUMMARY
+
+We performed a two-way ANOVA to see if age or sex has an effect on systolic blood pressure in hamsters. We also wanted to test if age and sex had an interacting effect. We were given that the data satisfied all the assumptions of a two-way ANOVA. After performing the test, we obtained significant results (p < 0.05) for the effects of age and sex, and an insignificant effect of the interaction. Because of this, we performed a Tukey follow-up test on the effects of age and sex on BP. These tests showed significant results for every comparison of factors in age and sex. Further power analysis showed we had sufficient power in our experiment set up.
+
+
+
+Q4. 
+
+ANSWER: Null hypothesis for diet: The diet has no effect on BMI. Based on the table, the only conclusion we can draw is that diet and exercise have an interacting effect that has an effect on BMI. 

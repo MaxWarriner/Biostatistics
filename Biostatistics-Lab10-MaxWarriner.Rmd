@@ -1,0 +1,330 @@
+---
+title: "Lab10"
+author: "Your Name"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.
+
+```{r}
+library(ARTool)    # For ART
+library(afex)      # For aov_ez
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(car)
+library(emmeans)
+library(pwr)
+library(PMCMRplus) # For Nemenyi Test
+
+DolphinData<-read.csv("Dolphin.csv",header=T)
+DolphinData$DOLPHIN=as.factor(DolphinData$DOLPHIN) # Donot forget to assign the nominal variables as factors
+DolphinData$SESSION=as.factor(DolphinData$SESSION)
+```
+
+A.
+
+```{r}
+
+normality_results = DolphinData %>%
+  group_by(SESSION) %>%
+  summarise(
+    W = shapiro.test(SCORE)$statistic,  # Extract W value
+    p_value = shapiro.test(SCORE)$p.value,  # Extract p-value
+    .groups = 'drop'  # Drop grouping after summarise to avoid warning
+  ) %>%
+  mutate(p_adj_BH = p.adjust(p_value, method = "BH"))  # Adjust p-values
+
+normality_results
+
+# Plot QQ plots for each level of Drug to visually assess normality
+DolphinData %>% ggplot(aes(sample = SCORE)) + facet_wrap(~ SESSION) + stat_qq() + stat_qq_line()
+
+DolphinData %>% ggplot(aes(x = SCORE)) + facet_wrap(~ SESSION) + geom_histogram(aes(y = ..density..), bins=10, color = "black", fill = "lightblue") + stat_function(fun = dnorm, args = list(mean = mean(DolphinData$SCORE, na.rm = TRUE), sd = sd(DolphinData$SCORE, na.rm = TRUE)), color = "red") + labs(x = "Score", y = "Density") + theme_minimal()
+
+
+# Plot a boxplot for 'GrowthHeight' across different 'light_condition'
+boxplot(SCORE ~ SESSION, data = DolphinData,  ylab = "Score", cex.lab=1.5, cex.axis=1.5, cex=1)
+
+# Identify and display outliers for each treatment group
+outliers_df = DolphinData %>% group_by(SESSION) %>% summarise(Outliers = list(boxplot.stats(SCORE)$out)) %>% unnest(Outliers)
+outliers_df # Display the data frame of outliers by treatment group
+
+
+rm_oneway_result <- aov_ez(
+  id = "DOLPHIN",
+  dv = "SCORE",
+  within = "SESSION",            # Drug as the within-subjects factor only
+  data = DolphinData,
+  type = 3,                    # Use type 3 sums of squares
+  anova_table = list(correction = "none", es = "ges")
+)
+
+# Display the ANOVA results
+summary(rm_oneway_result)
+
+```
+Our data passes the normality assumption with all of the sessions having a W between 0.94 and 0.97 and a p-value of 0.8580515. The qqplots and histograms also provide support for the normality. There were no outliers within the sessions. The sphericity assumption was satisfied with a Mauchly test statistic of 0.35542 and a p-value of 0.22845.
+
+
+B.
+Null hypothesis: The number of training sessions does not significantly affect the ability of a dolphins to complete a specific task.
+Alternative hypothesis: The number of training sessions does significantly affect the ability of dolphins to complete a specific task.
+
+```{r}
+# Display the ANOVA results
+summary(rm_oneway_result)
+
+
+```
+After performing a one-way repeated measures ANOVA on the data, we obtain a F(3 & 35 Dof) = 82.870, and a p-value < 0.00001.
+
+
+C.
+
+```{r}
+
+# Conduct post-hoc pairwise comparisons for Drug levels
+pairwise_results = emmeans(rm_oneway_result, pairwise ~ SESSION, adjust = "BH") # Bonferroni adjustment
+pairwise_results$contrasts
+
+```
+
+A follow up pairwise test shows significant differences in score between all of the sessions except for sessions 3 & 4. 
+
+D. 
+
+```{r}
+
+# Set the seed for reproducibility
+set.seed(0)
+source("pwr_rm_anova.R")
+gs=length(DolphinData$DOLPHIN)
+Session1 = DolphinData|>filter(SESSION=="1")|>pull(SCORE)
+Session2 = DolphinData|>filter(SESSION=="2")|>pull(SCORE)
+Session3 = DolphinData|>filter(SESSION=="3")|>pull(SCORE)
+Session4 = DolphinData|>filter(SESSION=="4")|>pull(SCORE)
+means = c(mean(Session1), mean(Session2), mean(Session3), mean(Session4))
+sds = c(sd(Session1), sd(Session2), sd(Session3), sd(Session4))
+
+# Estimate the power using the pwr.rm.anova function
+pwr_rm_anova(means = means, sds = sds, n = gs, sig.level = 0.05, n.simulations = 100)
+
+```
+A post-hoc power analysis shows us we have insufficient power to detect a difference in scores by session, with a power of 0.67 < 0.8.
+
+
+E. 
+```{r}
+
+c(mean(Session1), mean(Session2), mean(Session3), mean(Session4))
+c(sd(Session1), sd(Session2), sd(Session3), sd(Session4))
+t.test(Session1, Session2)$conf.int
+t.test(Session1, Session3)$conf.int
+t.test(Session1, Session4)$conf.int
+t.test(Session2, Session3)$conf.int
+t.test(Session2, Session4)$conf.int
+t.test(Session3, Session4)$conf.int
+
+```
+
+SUMMARY: 
+A one-way repeated measures ANOVA was performed on the scores of 9 dolphins during 4 different sessions to see if the session number had a significant effect on the scores of the dolphins. The assumptions were all reached for the ANOVA model. The ANOVA results showed that the session number had a statistically significant effect on score, F(3, 35) = 82.870, p < 0.00001. Post-hoc pairwise comparisons indicated significant differences of score on all of the sessions except 3 & 4. Means of the sessions are: 1 = 43.33333, 2 = 48.44444, 3 = 57.66667, 4 = 58.44444. The difference confidence intervals (95%) are: 1 vs. 2: [-32.98582, 22.76359], 1 vs. 3: [-41.33219, 12.66552], 1 vs. 4: [-41.93026, 11.70804], 2 vs. 3: [-36.02186, 17.57742], 2 vs. 4: [-36.61771, 16.61771], and 3 vs. 4: [-26.44699, 24.89144]. A post-hoc power analysis showed a model power of 0.67. 
+
+Q2.
+
+```{r}
+yield = c(105,98,125,100,130,80,156,145,170,150,185,135,187,167,201,180,210,162)
+treatment = c(rep("Control",6), rep("LowN",6),rep("HighN",6))
+field = c(rep(1:6,3))
+#Create the  dataframe and assign the factors.
+corn = data.frame(yield, treatment, field)
+corn$field = as.factor(corn$field)
+corn$treatment = as.factor(corn$treatment)
+```
+
+A.
+
+```{r}
+
+# Fit the Randomized Block Design ANOVA model
+my.rbanova = lm(yield ~ field + treatment, data = corn)
+
+hist(my.rbanova$residuals, freq=FALSE, main="", xlab="Residuals") #Histogram
+curve(dnorm(x,mean(my.rbanova$residuals), sd(my.rbanova$residuals)), add=TRUE,col="red")
+qqnorm(my.rbanova$residuals, main="",cex.lab=1.2,cex.axis=1.2) # QQ Plot
+qqline(my.rbanova$residuals)
+shapiro.test(my.rbanova$residuals) # Shapiro Test
+
+
+boxplot(yield ~ treatment, data = corn, names = c("Control","LowN", "HighN"), ylab = "yield", cex.lab=1.5, cex.axis=1.5, cex=1)
+# Identify and display outliers for each treatment group
+outliers_df = corn %>% group_by(treatment) %>%
+  summarise(Outliers = list(boxplot.stats(yield)$out)) %>% unnest(Outliers)
+outliers_df # Display the data frame of outliers by treatment group
+
+leveneTest(yield ~ treatment, data = corn) # Note: The blocking factor is not included.
+
+
+```
+The data satisfies all of the assumptions. The qqplot and histogram of the residuals show approximate normality. The Shapiro Wilkes test gives us W of 0.98548 and a p-value of 0.9889. The data has no outliers as shown by a boxplot analysis. The Levene test for homogeneity of variances gives us a F(2,15) = 0.0271 and p-value of 0.9733.
+
+
+B.
+Null hypothesis: The amount of nitrogen treatment does not significantly affect the yield of corn. 
+Alternative hypothesis: The amount of nitrogen treatment does significantly affect the yield of corn.
+
+```{r}
+my.rbanova = lm(yield ~ field + treatment, data = corn)
+AnovaTable = anova(my.rbanova)
+AnovaTable
+```
+The ANOVA test gives us a F(2,5) of 1025.77 and p-value < 0.00001.
+
+C.
+
+```{r}
+
+marginal_means = emmeans(my.rbanova, ~treatment)
+marginal_means
+# Perform pairwise comparisons between the levels of light_condition
+pairs(marginal_means, adjust="tukey")
+
+```
+A follow-up Tukey test shows significant differences between all of the comparisons. 
+
+
+D. 
+
+```{r}
+# Fit the two-way ANOVA model using lm
+lm_model = lm(yield ~ field + treatment, data = corn)
+anova_results = Anova(lm_model, type = "III")  
+
+# Parameters for power and sample size analysis
+alpha = 0.05            # Significance level
+power_target = 0.8      # Desired power
+
+# Extracting sums of squares
+SS_A = anova_results["field", "Sum Sq"]
+SS_B = anova_results["treatment", "Sum Sq"]
+SS_Error = anova_results["Residuals", "Sum Sq"]
+
+# Calculate overall model effect size
+f2_overall = (SS_A + SS_B) / SS_Error
+
+# Calculate effect sizes for main effects and interaction
+f2_B = SS_B / SS_Error
+
+# Output effect sizes
+cat("Effect size (Cohen's f²) for Overall Model:", f2_overall, "\n")
+cat("Effect size (Cohen's f²) for Factor 2:", f2_B, "\n")
+
+# Calculate power based on initial sample size for each factor, interaction term, and overall model
+# Calculate u for the entire model
+my.u =  sum(anova_results$Df[2:3]) 
+my.v = anova_results$Df[4]  
+power_calculated_overall = pwr.f2.test(u = my.u, v = my.v, f2 = f2_overall, sig.level = alpha)
+
+my.u2 =  sum(anova_results$Df[3]) 
+power_calculated_main2 = pwr.f2.test(u = my.u2, v = my.v, f2 = f2_B, sig.level = alpha)
+
+# Display calculated power
+cat("Calculated power for the sample size for Overall Model is:", power_calculated_overall$power, "\n")
+cat("Calculated power for the sample size for main effect of Factor 2 is:", power_calculated_main2$power, "\n")
+
+
+```
+A post-hoc power test gives us an effect size for the overall model of 259.7183 and for the treatment factor of 205.1548. The power of the model is 1. 
+
+E. 
+
+SUMMARY: 
+
+A randomized block ANOVA was performed on the effect of different levels of nitrogen on corn yield across several fields. The data satisfies all of the assumptions. The qqplot and histogram of the residuals show approximate normality. The Shapiro Wilkes test gives us W of 0.98548 and a p-value of 0.9889. The data has no outliers as shown by a boxplot analysis. The Levene test for homogeneity of variances gives us a F(2,15) = 0.0271 and p-value of 0.9733. The ANOVA test shows a significant effect on yield across the different treatments. The ANOVA test gives us a F(2,5) of 1025.77 and p-value < 0.00001. A follow up Tukey test revealed significant differences between every group comparisons: control([104,109]) vs. low-nitrogen([154, 160]) : t(10 df) = 28.855, p-value < 0.001, control vs. high-nitrogen([182, 187]): t(10 df) = 44.663, p-value < 0.001, and low-nitrogen vs. high-nitrogen: t(10 df) = 15.808, p-value < 0.001. A power analysis showed a power of 1 for the model. 
+
+Q3. PLEASE CREATE THE RELEVANT DATA, CODING BLOCKS AND INTERPRETATIONS HERE.
+
+```{r}
+lake = as.factor(1:4)
+surface = c(425,500,100,325)
+onem = c(130, 215, 30, 100)
+threem = c(56, 115, 10, 28)
+lakedat <- data.frame(lake = rep(lake, times = 3),
+                      depth = rep(c("surface","onem ","threem"), each = 4),
+                      algae = c(surface, onem, threem))
+
+head(lakedat)
+
+friedman.test(algae ~ depth | lake, data = lakedat)
+
+boxplot(surface, onem, threem, names = c("Surface","One Meter","Three Meter"))
+
+# Conduct Kolmogorov-Smirnov tests to compare ratings distributions between restaurants
+ks1 = ks.test(surface, onem)$p
+ks2 = ks.test(surface, threem)$p
+ks3 = ks.test(onem, threem)$p
+
+pvalues = c(ks1, ks2, ks3)
+p.adjust(pvalues, method = 'BH')    # Adjust the p-values for multiple comparisons using the Benjamini-Hochberg method
+
+
+frdAllPairsNemenyiTest(lakedat$algae, groups = lakedat$depth, blocks = lakedat$lake)
+
+# library(fitdistrplus) # Load the library
+# x = threem  # Replace with actual dataset
+# distributions = c("norm", "weibull", "gamma", "logis", "exp", "pois", "geom", "nbinom") # Distributions to fit
+# 
+# fit_list = list() # Fit distributions
+# for (dist in distributions) {
+#   fit = tryCatch({
+#     fitdist(x, dist)
+#   }, error = function(e) {
+#     cat("\nError in fitting", dist, ":", e$message, "\n")
+#     return(NULL)
+#   })
+#   if (!is.null(fit)) fit_list[[dist]] = fit
+# }
+# 
+# # Gather goodness-of-fit stats
+# fit_stats = data.frame(Distribution = character(), AIC = numeric(), BIC = numeric(), LogLikelihood = numeric(), Parameters = character(), stringsAsFactors = FALSE)
+# for (dist in names(fit_list)) {
+#   fit = fit_list[[dist]]
+#   params_str = paste(names(coef(fit)), "=", round(coef(fit), 4), collapse = ", ")
+#   fit_stats = rbind(fit_stats, data.frame(Distribution = dist, AIC = fit$aic, BIC = fit$bic, LogLikelihood = fit$loglik, Parameters = params_str))
+# }
+# 
+# print(fit_stats) # Display fit stats
+
+#surface is norm: mean = 337.5, sd = 150.5199
+#one meter is norm: mean = 118.75, sd = 66.3678
+#three meter is norm: mean = 52.25, sd = 39.7641
+
+source("pwr_friedman_test.R")
+
+gs=4
+posthoc_power = pwr_friedman_test(
+  group_sizes = c(gs, gs, gs),
+  dist_list = list("norm", "norm", "norm"),
+  params_list = list(list(mean = 337.5, sd = 150.5199),
+    list(mean = 118.75, sd = 66.3678),
+    list(mean = 52.25, sd = 39.7641)
+  ),
+  n.simulations = 1000, alpha = 0.05
+)
+print(posthoc_power)
+
+
+```
+A Friedman test was performed to determine if algae levels differed depending on the depth of the measurement across four lakes. A Kolmogorov-Smirnov test showed that each of the distributions was similar across all depths. This means we're comparing the medians across the depths measured. After performing the Friedman test, we obtained a chi-square(2 df) = 8, and a p-value of 0.01832. This showed us that we the depth measured at does significantly affect the median algae concentration. A follow up Nemenyi test showed only one significant difference between algae concentrations at three meters vs. the surface with a p-value of 0.013. A power analysis showed a power of 0.782. 
+
+
+Q4.
+
+A. I would approach this as a Two-Way Model-1 ANOVA. The factors would the gender and whether or not the mice had an exercise wheel. If the data did not follow the assumptions of the ANOVA, such as normality, homogeneity of variances, and no outliers, I would perform a Scheier Ray Hare test instead. If I obtained a significant result from either test, there would be no need to do a follow up comparison test as there is only two groups in each factor. A power calculation could be done in either test as well. 
+
+B. I would approach this as a One-Way repeated measures ANOVA, because you only have one factor(what they ate before bed) and you continually measure the same people. We can use the ANOVA for sure because the data is normally distributed with no outliers as well. If I achieved a significant result from the ANOVA, I would perform a follow-up pairwise t-test with the Benjamini Hochberg correction for the p-values, to see which differences were significant between each pair. A power analysis is also possible post-hoc. 
+
+C. This question seems like either a two-sample t-test or a Mann-Whitney U test. If the differences satisfied the normality and no outlier assumption, I would use a two-sample t-test to compare the means. If the two data sets have similar variances, I would use student's two-sample t-test, otherwise, I would use Welch's two-sample t-test. A power analysis could be done post-hoc as well. 

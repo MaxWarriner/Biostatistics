@@ -1,0 +1,200 @@
+---
+title: "Biostatistics-Lab2"
+author: "Max Warriner"
+output: pdf_document
+---
+
+Q1. Provide your comments/interpretations in white spaces underneath the code.
+
+A.
+
+```{r}
+rm(list=ls()) # Keep this code here. It clears the background.
+
+library(dplyr)
+library(DescTools)
+library(e1071)
+
+flowers <- read.csv("flowerdata.csv")
+
+flowersum <- read.csv("flowerdata.csv") |>
+  group_by(Sex) |>
+  summarize(mean = mean(FL_N), 
+            median = median(FL_N), 
+            standard.deviation = sd(FL_N), 
+            IQR = IQR(FL_N), 
+            skewness = skewness(FL_N), 
+            kurtosis = kurtosis(FL_N))
+
+head(flowersum)
+
+
+```
+
+The flower number for the male species appears to be much higher in both categories of descriptive statistics. Also, the skewness and kurtosis for both species are relatively high. 
+
+B.
+
+```{r}
+
+library(ggplot2)
+
+ggplot(flowersum, aes(x = Sex, y = mean), color = "black") +  
+  geom_bar(aes(fill = Sex), stat = "identity", width = 0.5, color = "black") +  # Move fill inside geom_bar
+  geom_errorbar(aes(ymin = mean - standard.deviation, ymax = mean + standard.deviation), width = 0.1) +
+  labs(x = "Sex", y = "Mean Number of Flowers") +
+  theme(legend.position = "none") + 
+  theme(
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 20),
+    legend.text = element_text(size = 16)               
+  ) +
+  scale_fill_manual(values = c("F" = "yellow3", "M" = "green4"))  +
+  theme_bw() +
+  geom_hline(yintercept = 0) +
+  ggtitle("Mean Number of Flowers by Sex")
+
+```
+
+The differences in the mean values between the two sexes are easy to see on the bar plot. The male species has a much larger mean number of flowers than the female, but interestingly, the male species has a much larger standard deviation on the number of flowers as well. 
+
+C.
+
+```{r}
+
+
+ggplot(flowers, aes(x = Sex, y = FL_N, fill = Sex)) +
+  geom_boxplot(width = 0.5) +
+  stat_boxplot(geom = "errorbar", width = 0.15) +
+  scale_fill_manual(values = c("F" = "yellow3", "M" = "green4")) +
+  labs(x = "Sex", y = "Number of Flowers") +
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16),   
+    legend.text = element_text(size = 16)  
+  )+
+  theme(legend.position = "none") +
+  ggtitle("Boxplot of Number of Flowers Among Sex") +
+  geom_hline(yintercept = 0)
+
+
+```
+
+We see with the box plot the differences in the median as well the difference in the IQR, rather than mean and standard deviation. The whole 75% of the data represented by the IQR is much higher in the male sex rather than the female sex. 
+
+
+Q2. Provide your comments/interpretations in white spaces underneath the code.
+
+A.
+
+```{r}
+
+bp <- read.csv("bp.csv")
+
+bp <- bp |>
+  mutate(Sex = case_when(
+    Sex==1  ~ "M",                   
+    Sex==2 ~ "F"                   
+  ))
+
+bp = bp |>
+  mutate(Smoking = case_when(
+    Smoking==0  ~ "No",                   
+    Smoking==1 ~ "Yes"                   
+  ))
+
+bp$Sex = as.factor(bp$Sex)
+bp$Smoking <- as.factor(bp$Smoking)
+bp$Smoking <- factor(bp$Smoking, levels = c("Yes", "No"))
+
+bpsum <- bp |>
+  group_by(Sex) |>
+  summarise(median.leftarm = median(SBPLA), 
+            IQR.leftarm = IQR(SBPLA), 
+            median.leftankle = median(SBPLN), 
+            IQR.leftankle = IQR(SBPLN))
+
+head(bpsum)
+  
+
+```
+
+B.
+
+```{r}
+
+plot.data <- data.frame(Sex = rep(bp$Sex, 2), 
+                        Location = c(rep("Left Arm", length(bp$SBPLA)), rep("Left Ankle", length(bp$SBPLN))), 
+                        BP = c(bp$SBPLA, bp$SBPLN))
+
+
+
+
+ggplot(plot.data, aes(x = Location, y = BP , fill = Sex)) +
+  geom_boxplot(width = 0.5, position = position_dodge(width = 0.75)) +
+  stat_boxplot(geom = "errorbar", width = 0.2, position = position_dodge(width = 0.75)) + 
+  scale_fill_manual(values = c("M" = "green4", "F" = "yellow3")) + 
+  labs(x = "Location", y = "Systolic Blood Pressure") + 
+  theme_minimal() +  # Use a minimal theme
+  theme(
+    axis.title = element_text(size = 16),  # Customize the font size of axis titles
+    axis.text = element_text(size = 16),   # Customize the font size of axis text
+    legend.text = element_text(size = 16),  # Customize the font size of the legend text
+    legend.title = element_blank()          # Remove the legend title
+  ) +
+  ggtitle("Systolic Blood Pressure by Measurement Location and Sex")
+
+```
+
+There is a clear difference in systolic blood pressure when comparing location measured. The left ankle measurements are higher on average. Also, there doesn't seem to be much of a difference by gender. The medians for the female sex tend to be slightly higher. 
+
+C.
+
+```{r}
+
+bpsmoking <- bp |>
+  group_by(Smoking, Sex) |>
+  summarise(leftarm.mean = mean(SBPLN), 
+            leftarm.sd = sd(SBPLN), 
+            leftankle.mean = mean(SBPLA), 
+            leftankle.sd = sd(SBPLA))
+
+head(bpsmoking)
+
+```
+
+D.
+
+```{r}
+
+ggplot(bpsmoking, aes(x = Smoking, y = leftarm.mean, fill = Sex), color = "black") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.5, color = "black") +
+  geom_errorbar(aes(ymin = leftarm.mean - leftarm.sd, ymax = leftarm.mean + leftarm.sd),                
+                position = position_dodge(width = 0.7), width = 0.2) +
+  labs(x = "Smoking Status", y = "Systolic Blood Pressure") +                                           
+  theme(
+    axis.title = element_text(size = 16),                # Customize font size for axis titles
+    axis.text = element_text(size = 16),                 # Customize font size for axis text
+    legend.text = element_text(size = 16),                # Set font size for legend text
+    legend.title = element_text(size = 16)                # Set font size for legend title
+  ) +
+  scale_fill_manual(values = c("M" = "green4", "F" = "yellow3")) +
+  theme_bw() +
+  ggtitle("Systolic Blood Pressure by Smoking Status and Sex") +
+  geom_hline(yintercept = 0)
+
+```
+
+Smokers tend to have a higher mean systolic blood pressure, however, the error bars overlapping indicate that there is no statistically significant difference that we can detect. 
+
+Q3. 
+
+A. *done on paper*
+
+B. *done on paper*
+
+C. *done on paper*
+
+D. *done on paper*
+

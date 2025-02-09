@@ -1,0 +1,263 @@
+---
+title: "Biostatistics-Lab2"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1. 
+
+a. A bar plot would be appropriate for this data because we are representing ordinal data and their counts. 
+
+b. *Answer done on paper*
+
+Q2. Provide your comments/interpretations in white spaces underneath the code.
+
+a.
+
+```{r}
+
+library(dplyr)
+
+data <- read.csv("sallys.csv") |>
+  arrange(-SVL)
+
+head(data)
+tail(data)
+
+```
+
+The salamander with the smallest SVL has the ID of "JSF 120" and the SVL of 32.95. The salamander with the largest SVL has the ID of "JSF 86" and the SVL of 43.18.
+
+b.
+
+```{r}
+
+library(ggplot2)
+
+data.male <- data |>
+  filter(Gender == "M")
+
+data.female <- data |>
+  filter(Gender == "F")
+
+hist.info <- hist(data$Mass, breaks = "Sturges", plot = FALSE) # breaks options: Sturges, Scott, FD
+bar.breaks = hist.info$breaks
+
+hist.info.m <- hist(data.male$Mass, breaks = "Sturges", plot = FALSE) # breaks options: Sturges, Scott, FD
+bar.breaks = hist.info$breaks
+
+hist.info.f <- hist(data.female$Mass, breaks = "Sturges", plot = FALSE) # breaks options: Sturges, Scott, FD
+bar.breaks = hist.info$breaks
+bar.breaks.m = hist.info.m$breaks
+bar.breaks.f = hist.info.f$breaks
+
+
+# Use the calculated breaks from the histogram function in ggplot2
+ggplot(data.male, aes(x = Mass)) +
+  geom_histogram(breaks = bar.breaks.m, fill = "lightblue", color = "black", closed = "left") +  # Use the calculated breaks
+  xlab("Mass") + ylab("Frequency") +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16)) +
+  ggtitle("Mass of Male Salamanders") +
+  theme_bw()
+
+ggplot(data.female, aes(x = Mass)) +
+  geom_histogram(breaks = bar.breaks.f, fill = "pink", color = "black", closed = "left") +  # Use the calculated breaks
+  xlab("Mass") + ylab("Frequency") +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16)) +
+  ggtitle("Mass of Female Salamanders") +
+  theme_bw()
+
+ggplot(data, aes(x = Mass, fill = Gender)) +
+  geom_histogram(breaks = bar.breaks.f, color = "black", closed = "left") +  # Use the calculated breaks
+  xlab("Mass") + ylab("Frequency") +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16)) +
+  ggtitle("Mass of Male and Female Salamanders") + 
+  scale_fill_manual(values = c("F" = "pink", "M" = "lightblue")) +
+  theme_bw()
+
+mass.data <- data |>
+  group_by(Gender) |>
+  summarise(`Mean Mass` = mean(Mass))
+
+head(mass.data)
+
+
+```
+
+It seems based on the histogram that the females in the species tend to have more mass. The means of the genders supports this as well. 
+
+c.
+
+```{r}
+
+specific.data <- data |> filter(Gender == "F", Mass > 0.9, SVL < 50)
+
+head(specific.data, n = 8)
+
+```
+
+There are 8 such salamanders. 
+
+Extra Practice:
+
+```{r}
+
+```
+
+Q3. Provide your comments/interpretations in white spaces underneath the code.
+
+a.
+
+```{r}
+
+bp <- read.csv("bp.csv") |>
+  mutate(Sex = as.factor(Sex)) |>
+  mutate(Sex = case_when(Sex == 1 ~ "M", 
+                         Sex == 2 ~ "F"))
+
+head(bp, n = 12)
+
+
+```
+
+b.
+
+```{r}
+set.seed(13)
+strat.bp <- slice_sample(group_by(bp, Sex), n=10)
+
+write.csv(strat.bp, "bp_sample.csv")
+
+```
+
+c.
+
+```{r}
+
+bp <- bp |>
+  mutate(BMI.cat = case_when(BMI < 18.5 ~ "Underweight", 
+                             BMI >= 18.5 & BMI < 25 ~ "Healthy Weight", 
+                             BMI >= 25 & BMI < 30 ~ "Overweight", 
+                             BMI >= 30 ~ "Obese"))
+bp <- bp |>
+  mutate(BMI.cat = factor(BMI.cat, levels = c("Underweight", "Healthy Weight", "Overweight", "Obese")))
+
+head(bp)
+
+bmi.dat <- bp |>
+  group_by(BMI.cat) |>
+  summarise(mean.bp = mean(SBPLA))
+
+head(bmi.dat)
+
+```
+
+The average systolic blood pressure increases as you increase the BMI category. 
+
+d. 
+
+```{r}
+
+ggplot(bp, aes(x = BMI.cat, fill = Sex)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(values = c("pink", "lightblue")) +
+  labs(title = "BMI Categories Across Gender",
+       x = "BMI",     
+       y = "Frequency") +    
+  theme_minimal() + 
+  theme(                                       
+    text = element_text(size = 16),            # Global text size
+    legend.title = element_text(size = 16),    # Legend title size
+    legend.text = element_text(size = 16),     # Legend item text size
+    axis.title = element_text(size = 14),      # Axis title size
+    axis.text = element_text(size = 12)        # Axis tick label size
+  )
+
+rel.graph <- bp |>
+  group_by(Sex, BMI.cat) |>
+  summarise(n = n()) |>
+  mutate(freq = n/948)
+
+ggplot(rel.graph, aes(x = BMI.cat, fill = Sex, y = freq)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c("pink", "lightblue")) +
+  labs(title = "BMI Categories Across Gender",
+       x = "BMI",     
+       y = "Proportion") +    
+  theme_minimal() + 
+  theme(                                       
+    text = element_text(size = 16),            # Global text size
+    legend.title = element_text(size = 16),    # Legend title size
+    legend.text = element_text(size = 16),     # Legend item text size
+    axis.title = element_text(size = 14),      # Axis title size
+    axis.text = element_text(size = 12)        # Axis tick label size
+  )
+
+```
+Women tend to be considered obese compared to men, rather than just overweight, based on the frequency chart. 
+
+
+e. 
+
+```{r}
+
+ggplot(bp, aes(x = SBPLA, fill = Sex)) +
+  geom_histogram(color = "black", closed = "left") +  # Use the calculated breaks
+  xlab("Systolic Blood Pressure") + ylab("Frequency") +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16)) +
+  ggtitle("Systolic Blood Pressure Among Men and Women (Left Arm)") + 
+  scale_fill_manual(values = c("F" = "pink", "M" = "lightblue")) +
+  theme_bw()
+
+bp.sum <- bp |>
+  group_by(Sex) |>
+  summarise(mean.bp = mean(SBPLA), 
+            sd.bp = sd(SBPLA))
+
+head(bp.sum)
+
+```
+
+Women tend to have ever so slightly higher systolic blood pressure taken at the left arm than men. 
+
+f. 
+
+```{r}
+
+bp.location <- data.frame(
+  bp = c(bp$SBPLA, bp$SBPLN),
+  Type = c(rep("Left Arm", length(bp$SBPLA)), rep("Left Ankle", length(bp$SBPLN)))
+)
+
+ggplot(bp.location, aes(x = bp, fill = Type)) +
+  geom_histogram(color = "black", closed = "left", alpha = 0.5) +  # Use the calculated breaks
+  xlab("Systolic Blood Pressure") + ylab("Frequency") +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 16)) +
+  ggtitle("Systolic Blood Pressure Taken at Left Arm and Left Ankle") + 
+  scale_fill_manual(values = c("lightgreen", "beige")) +
+  theme_bw()
+
+
+```
+
+Blood pressure taken at the left ankle tends to be greater than when taken at the left arm. 
+
+Extra Practice:
+
+```{r}
+
+```
+
+Q4. 
+
+a. *done on paper*
+
+b. *done on paper*
+
+c. *done on paper*

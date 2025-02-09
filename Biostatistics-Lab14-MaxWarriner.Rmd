@@ -1,0 +1,288 @@
+---
+title: "Lab14"
+author: "Max Warriner"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+Q1.
+
+```{r}
+weight = c(1, 2, 3, 3, 1, 2, 1, 2, 3, 1, 1, 3, 1, 2, 1, 2, 3, 1, 1, 3, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3) # 1 is normal, 2 is overweight, 3 is obese
+obs.counts=table(weight)
+obs.counts
+```
+
+A.
+
+```{r}
+
+exp.probs = c(0.5,0.35,0.15)                 # Probability should sum to 1. 
+exp.counts = exp.probs*sum(obs.counts)       # Expected counts
+exp.counts
+
+```
+
+The levels of overweight status are independent and exclusive. The expected counts for all of the cells are greater than 5. We can infer from this that the sample size is large enough. All of the assumptions are met. 
+
+
+B. 
+
+```{r}
+
+chisq.test(obs.counts, p = exp.probs)                  # Chi-squared test of goodness-of-fit
+
+```
+
+The data gives us a Chi-Squared Statistic (2 df) of 3.82 and a p-value of 0.1481. We cannot reject the null hypothesis that the proportions are different than expected. 
+
+
+C. 
+
+```{r}
+library(pwr)
+obs.probs = c(51,28,21)/sum(c(51,28,21))
+effect.size = ES.w1(obs.probs, exp.probs)
+degrees = length(obs.probs) - 1
+
+# Posthoc Power Analysis: Number of samples needed to achieve a power of 0.8
+pwr.chisq.test(w=effect.size,
+               N=sum(obs.counts),   # Total number of observations
+               df=degrees,          # Degrees of Freedom
+               power=NULL,          # 1 minus Type II probability
+               sig.level=0.05)      # Type I probability
+
+# Apriori Power Analysis: Number of samples needed to achieve a power of 0.8
+pwr.chisq.test(w=effect.size,
+               N=NULL,   # Total number of observations
+               df=degrees,          # Degrees of Freedom
+               power=0.8,          # 1 minus Type II probability
+               sig.level=0.05)      # Type I probability
+
+```
+
+We have insufficient power at 0.37. We would've needed at least 277 samples to obtain sufficient power of 0.8.
+
+D.
+
+```{r}
+
+#NA
+
+```
+
+E. SUMMARY
+
+We sampled 100 participants to test whether the proportion of weight categories would match the expected probabilities of 50% normal, 35% overweight, and 15% obese. Of the observed participants, 51 of them were normal, 28 were overweight, and 21 were obese. The data met all of the assumptions of the chi-squared test, with each expected count greater than 5. The chi-squared goodness of fit indicated no significant difference in proportions between the participants and what would've expected, with a chi-squared test statistic (2-df) of 3.82 and p-value of 0.15. Our test had insufficient power at 0.37. We needed at least 277 samples to obtain sufficient power. 
+
+
+Q2.
+
+```{r}
+my.table=matrix(c(2883,3829,99,1398),nrow=2)
+row.names(my.table) = c("Non-smoker","Smoker")
+colnames(my.table) = c("No SSLC", "SSLC")
+my.table
+
+non.smokers = 2883+99
+smokers = 3829+1398
+no.SSLC = 2883+3829
+SSLC = 99 + 1398
+total = 2883 + 99 + 3829 + 1398
+```
+
+A.
+
+```{r}
+
+expected.counts = matrix(c(non.smokers*no.SSLC/total, smokers*no.SSLC/total, non.smokers*SSLC/total, smokers*SSLC/total), nrow = 2)
+row.names(expected.counts) = c("Non-smoker","Smoker")
+colnames(expected.counts) = c("No SSLC", "SSLC")
+expected.counts
+
+```
+
+All of the cells have a greater expected than 5. 
+
+
+B. 
+
+```{r}
+
+chisq.test(my.table, p = expected.counts/total)                  # Chi-squared test of goodness-of-fit
+
+```
+
+The chi-squared test statistic (1 df) of 697.25 and a p-value < 0.00001 shows a significant association between SSLC and smoking. 
+
+
+C. 
+
+```{r}
+
+obs.probs = c(2883,3829,99,1398)/sum(c(2883,3829,99,1398))
+effect.size = ES.w1(obs.probs, expected.counts/total)
+degrees = length(obs.probs) - 1
+
+# Posthoc Power Analysis: Number of samples needed to achieve a power of 0.8
+pwr.chisq.test(w=effect.size,
+               N=sum(my.table),   # Total number of observations
+               df=degrees,          # Degrees of Freedom
+               power=NULL,          # 1 minus Type II probability
+               sig.level=0.05)      # Type I probability
+
+# Apriori Power Analysis: Number of samples needed to achieve a power of 0.8
+pwr.chisq.test(w=effect.size,
+               N=NULL,   # Total number of observations
+               df=degrees,          # Degrees of Freedom
+               power=0.8,          # 1 minus Type II probability
+               sig.level=0.05)      # Type I probability
+
+```
+
+Our chi-square test has a power of 1. We only needed 40 samples to achieve sufficient power. 
+
+D.
+
+```{r}
+
+library(epitools)
+
+OddsRatio = oddsratio(my.table)
+OddsRatio
+
+```
+
+A 95% confidence interval of the odds ratio gives us [8.67, 13.16]. Participants with SSLC had odds of smoking 10.61 times greater than those without SSLC. 
+
+
+E. SUMMARY
+
+A chi-squared test of 8209 participants was done to test the odds ratio of smoking as it pertains to small cell lung cancer. All of the expected counts are greater than 5 and all of the assumptions of the chi-squared test were met. The chi-squared test statistic (1 df) of 697.25 and a p-value < 0.00001 shows a significant association between SSLC and smoking. Participants with SSLC had odds of smoking 10.61 times greater than those without SSLC, with a 95% confidence interval of the odds ratio: [8.67, 13.16]. Our test had a power of 1. 
+
+
+
+Q3.
+
+PLEASE ENTER THE DATA IN THIS CODING BLOCK
+
+```{r}
+obs.counts <- matrix(c(977, 970, 945, 23, 30, 55), nrow = 3)
+colnames(obs.counts) = c("No Heart Disease","Heart Disease")
+row.names(obs.counts) = c("Low Cholesterol Diet", "Normal Cholesterol Diet", "High Cholesterol Diet")
+obs.counts
+
+```
+A.
+
+```{r}
+
+no.hd = 977 + 970 + 945
+hd = 23 + 30 + 55
+lc = 977 + 23
+nc = 970 + 30
+hc = 945 + 55
+total = 977 + 970 + 945 + 23 + 30 + 55
+
+exp.counts <- matrix(c(no.hd*lc/total, no.hd*nc/total, no.hd*hc/total, hd*lc/total,hd*nc/total, hd*hc/total), nrow = 3)
+colnames(exp.counts) = c("No Heart Disease","Heart Disease")
+row.names(exp.counts) = c("Low Cholesterol Diet", "Normal Cholesterol Diet", "High Cholesterol Diet")
+exp.counts
+
+```
+
+Each cell has a expected count > 5. 
+
+B. 
+
+```{r}
+
+# Chi-squared test of independence with Williams Correction
+test = chisq.test(obs.counts)
+
+# Extract necessary values
+N = sum(obs.counts)  # Total count
+R = rowSums(obs.counts)  # Row sums
+C = colSums(obs.counts)  # Column sums
+r = nrow(obs.counts)  # Number of rows
+c = ncol(obs.counts)  # Number of columns
+
+# Calculate Williams' correction factor
+q = 1 + ( (N * sum(1/R) - 1) * (N * sum(1/C) - 1) ) / (6 * N * (r - 1) * (c - 1))
+
+# Apply Williams' correction
+X2_corrected = test$statistic / q
+df_corrected = (r - 1) * (c - 1)
+
+# Calculate the corrected p-value
+p_value_corrected = pchisq(X2_corrected, df_corrected, lower.tail = FALSE)
+
+# Output the results
+cat("Chi-squared test for given probabilities",
+    "data: obs",
+    sprintf("X-squared = %.3f, df = %d, p-value = %e", X2_corrected, df_corrected, p_value_corrected),
+    sep = "")
+
+```
+
+The chi-squared test shows a significant association between cholesterol and heart disease, with a chi-squared test statistic (2-df) of 16.209 and a p-value of 0.0003. 
+
+
+C. 
+
+```{r}
+
+source("PairwiseChiSquareTestOfIndependence.R")
+PairwiseChiSquareTestOfIndependence(obs.counts, comparison_type = "row")
+
+```
+
+A pairwise chi-square test, after p-value adjustment, gives us a significant difference between low and high cholesterol diets (p-value = 0.001) as well as normal and high cholesterol diets (p-value = 0.01).
+
+
+D.
+
+```{r}
+
+obs.probs = c(977, 970, 945, 23, 30, 55)/sum(c(977, 970, 945, 23, 30, 55))
+effect.size = ES.w1(obs.probs, exp.counts/total)
+degrees = length(obs.probs) - 1
+
+# Posthoc Power Analysis: Number of samples needed to achieve a power of 0.8
+pwr.chisq.test(w=effect.size,
+               N=sum(obs.counts),   # Total number of observations
+               df=degrees,          # Degrees of Freedom
+               power=NULL,          # 1 minus Type II probability
+               sig.level=0.05)      # Type I probability
+
+# Apriori Power Analysis: Number of samples needed to achieve a power of 0.8
+pwr.chisq.test(w=effect.size,
+               N=NULL,   # Total number of observations
+               df=degrees,          # Degrees of Freedom
+               power=0.8,          # 1 minus Type II probability
+               sig.level=0.05)      # Type I probability
+
+```
+
+Our test has a power of 0.88. We only needed 2451 samples to obtain sufficient power. 
+
+E. 
+
+```{r}
+
+library(epitools)
+
+RelativeRisk = riskratio(obs.counts)
+RelativeRisk
+
+```
+
+Going from a low to normal cholesterol diet increases the risk of developing heart disease by 30%, 95% CI: [0.76, 2.23]. This relationship is not significant, p-value = 0.40. Going from a low to high cholesterol diet increases the risk of developing heart disease by 139%, 95% CI: [1.48, 3.86]. This relationship is significant, p-value = 0.0003. 
+
+
+F. SUMMARY
+
+We did a cohort study on 3000 participants to assess the independence between varying levels of cholesterol in a diet and the risk of developing heart disease. The data passed the assumptions of a chi-squared test, with each expected count being greater than 5. The chi-squared test shows a significant association between heart disease and cholesterol with a chi-squared test statistic (2-df) of 16.209 and a p-value of 0.0003. Based on this we can reject our null hypothesis that cholesterol is independent of heart disease. A pairwise chi-square test, after p-value adjustment, gives us a significant difference between low and high cholesterol diets (p-value = 0.001) as well as normal and high cholesterol diets (p-value = 0.01). Our test has a power of 0.88. After calculating the risk ratio: going from a low to normal cholesterol diet increases the risk of developing heart disease by 30%, 95% CI: [0.76, 2.23]. This relationship is not significant, p-value = 0.40. Going from a low to high cholesterol diet increases the risk of developing heart disease by 139%, 95% CI: [1.48, 3.86].
+
+
